@@ -15,11 +15,11 @@
 - **信任模型**：朋友间游玩，不防客户端作弊
 - **不做的事**：历史对局记录、排位、匹配、账号系统、内置语音
 
-### 1.2 为什么从 iOS 迁移到 Web
+### 1.2 Web 形态的优势
 
-1. **降低参与门槛**：分享链接 > 下载 App
-2. **跨平台**：手机 / PC / 微信浏览器原生支持
-3. **免审核**：无需 App Store，迭代更快
+1. **低参与门槛**：分享链接即可加入，无需安装
+2. **跨平台**：手机 / PC / 微信内置浏览器原生支持
+3. **快速迭代**：无应用商店审核链路
 4. **国内体验**：配合 CloudBase 部署，延迟可控
 
 ---
@@ -28,19 +28,25 @@
 
 | 层面 | 方案 | 说明 |
 |------|------|------|
+| 层面 | 方案 | 说明 |
 | 构建工具 | **Vite 8** | 纯 SPA，HMR 极快，产出静态文件 |
 | 框架 | **React 19** | 配合 React Compiler 自动优化 |
 | 语言 | **TypeScript** | 类型安全 |
 | 运行时 / 包管理 | **Bun** | 已通过 `bun.lock` 锁定 |
-| 路由 | **React Router** | 首页 / 房间页 / 游戏页 |
-| 状态管理 | **Zustand** | 轻量，适合实时同步场景（待引入） |
-| 样式 | **Tailwind CSS + shadcn/ui** | 快速搭建 UI（待引入） |
-| 动画 | **Framer Motion + CSS 3D Transform** | 卡牌翻面、换牌飞行、呼吸动画 |
+| 路由 | **React Router** | 首页 / 房间页 / 游戏页（待引入） |
+| 状态管理 | **Zustand + immer middleware** | WebSocket 驱动，组件外可更新；`immer` 简化深层状态更新 |
+| 本地复杂状态 | **use-immer**（`useImmer` / `useImmerReducer`） | 组件内复杂表单/配置状态（如 Host 的房间配置面板） |
+| 样式 | **Tailwind CSS v4**（`@tailwindcss/vite`） | 原子化 CSS，Vite 插件模式零配置 |
+| UI 组件 | **shadcn/ui + radix-ui** | 无障碍交互原语 + 可定制样式（复制到本仓库）|
+| UI 工具 | **class-variance-authority + clsx + tailwind-merge** | 变体管理 + 类名合并 |
+| 图标 | **lucide-react** | 矢量图标库 |
+| 字体 | **@fontsource-variable/geist** | 可变字体，现代感强 |
+| 动画 | **Framer Motion + CSS 3D Transform + tw-animate-css** | 卡牌翻面、换牌飞行、呼吸动画 |
 | 实时通信 | **原生 WebSocket API** | 封装为 React Hook |
-| 语音播报 | **Web Speech API (`SpeechSynthesis`)** | 替代 iOS 的 `AVSpeechSynthesizer` |
+| 语音播报 | **Web Speech API (`SpeechSynthesis`)** | 浏览器原生 TTS，零依赖 |
 | 防屏幕休眠 | **Screen Wake Lock API** | 游戏进行中保持屏幕常亮 |
 | 打包形态 | **PWA**（可选后期） | 支持添加到桌面 / 主屏 |
-| 图标 / 头像 | **Identicon 算法** | 玩家名称 → 对称像素头像 |
+| 头像 | **Identicon 算法** | 玩家名称 → 对称像素头像（自实现） |
 | 后端（实时同步） | **CloudBase HTTP Function + WebSocket Relay（Node.js + ws）** | 房间状态存内存，游戏结束即清除 |
 | 部署 | **CloudBase 静态托管（前端）+ CloudBase 云函数（后端）** | 国内低延迟 |
 
@@ -57,6 +63,117 @@
 - Framer Motion + CSS 3D 覆盖 95% 场景
 - 预留 **Lottie** 接入点（后期需要华丽效果，例如闭眼动画、胜负特效时再接入）
 - Three.js 仅在需要"3D 牌桌视角"时才值得，MVP 阶段不做
+
+### 2.3 UI 组件策略（shadcn/ui + 自定义游戏组件）
+
+**核心理念：UI 分两层**
+
+| 层 | 来源 | 组件类型 |
+|---|---|---|
+| **交互原语**（Primitives） | **shadcn/ui**（复制到 `src/components/ui/`） | Button, Dialog, Toast, Input, Checkbox, Slider, Select, Sheet, Tooltip, Popover, Tabs, Label |
+| **游戏业务组件** | **自己实现**（`src/components/game/`） | Card, PlayerSeat, PlayerTable, CountdownRing, RoleBadge, VotePanel, NightActionPanel, ResultReveal |
+
+**为什么选 shadcn/ui：**
+
+- 底层是 **Radix UI**，焦点管理、键盘导航、portal、无障碍处理到位，这些手写极易出 bug
+- **不是 npm 包**，是复制代码到本仓库，完全可控，后续想改就改，0 包体积负担
+- 与 Tailwind 天然配合，无样式冲突（不像 MUI/AntD/Mantine/Chakra 自带样式系统会打架）
+- 社区资源丰富，配合 `tw-animate-css` 可快速获得微动效
+
+**不引入的库：**
+
+| 库 | 原因 |
+|---|---|
+| Ant Design / MUI | 企业/Material 风格重，不适合游戏调性 |
+| Mantine / Chakra UI | 自带样式系统，与 Tailwind 冲突 |
+| daisyUI | Dialog/Popover 的焦点与键盘处理不如 Radix 可靠 |
+
+**游戏业务组件清单（自研）：**
+
+| 组件 | 职责 |
+|---|---|
+| `Card` | 卡牌基础组件，支持翻面（`rotateY`）、选中态、禁用态 |
+| `CenterCardSlot` | 桌面牌位置（3 张），接收翻牌/交换动画 |
+| `PlayerSeat` | 单个玩家座位（头像 + 名字 + 在线状态 + 当前是否被唤醒） |
+| `PlayerTable` | 围桌环形布局，三角函数算坐标，响应式适配手机/PC |
+| `CountdownRing` | 环形进度条倒计时，最后 5s 变红脉冲 |
+| `RoleBadge` | 角色徽章（图标 + 中文名 + 阵营色） |
+| `NightActionPanel` | 按 `NightActionRequest.kind` 渲染不同操作界面（强盗选人 / 预言家二选一等） |
+| `VotePanel` | 投票界面，玩家列表 + 弃票选项 + 提交 |
+| `ResultReveal` | 结算场景：逐个翻牌（错开 200ms）+ 胜负光晕 + 回放日志 |
+| `PhaseTransition` | 阶段切换的全屏遮罩 + 标题 |
+| `HostOfflineOverlay` | Host 离线等待遮罩 |
+
+### 2.4 状态管理策略（Zustand + Immer）
+
+**两层状态划分：**
+
+| 范围 | 方案 | 典型场景 |
+|---|---|---|
+| **全局共享状态** | Zustand store（配 `immer` middleware） | `publicState` / `privateState` / `hostState` / 连接状态 / 当前玩家 ID |
+| **组件内局部状态** | `useImmer` / `useImmerReducer`（from `use-immer`） | Host 配置面板（角色勾选 + 三个时间滑块）、投票面板的本地选择 |
+
+**全局 store（WebSocket 驱动）：**
+
+```ts
+import { create } from 'zustand'
+import { immer } from 'zustand/middleware/immer'
+
+interface GameStore {
+  playerId: string
+  publicState: PublicRoomState | null
+  privateState: PrivatePlayerState | null
+  hostState: HostGameState | null
+  connectionStatus: 'connecting' | 'connected' | 'disconnected'
+
+  setPublicState: (s: PublicRoomState) => void
+  updatePlayerName: (playerId: string, name: string) => void
+  // ...
+}
+
+export const useGameStore = create<GameStore>()(
+  immer((set) => ({
+    // ...
+    updatePlayerName: (playerId, name) => set((state) => {
+      const player = state.publicState?.players.find(p => p.playerId === playerId)
+      if (player) player.name = name
+    }),
+  }))
+)
+```
+
+**组件内复杂状态（use-immer）：**
+
+```tsx
+import { useImmer } from 'use-immer'
+
+function HostSettingsPanel() {
+  const [settings, updateSettings] = useImmer<RoomSettings>({
+    roles: [],
+    discussionTime: 5,
+    actionTime: 30,
+    voteTime: 30,
+  })
+
+  const toggleRole = (role: Role) => updateSettings((draft) => {
+    const idx = draft.roles.indexOf(role)
+    if (idx >= 0) draft.roles.splice(idx, 1)
+    else draft.roles.push(role)
+  })
+  // ...
+}
+```
+
+**为什么需要两套而不是都塞进 Zustand：**
+
+- Host 配置面板的临时状态（未提交）**不应该**污染全局 store；提交后一次性 `updatePublicState` 广播
+- `useImmer` 是完全本地的，组件卸载即销毁，不涉及订阅/广播
+
+**关键规则：**
+
+- WebSocket 消息回调 → 直接调用 `useGameStore.getState().setXxx(...)` 更新 store
+- 组件只用 selector 订阅自己关心的字段，避免全量重渲染
+- **Host 端**的游戏引擎逻辑（`GameEngine`）以纯函数形式接收当前 state 返回新 state，再写回 store；便于单测
 
 ---
 
@@ -461,7 +578,7 @@ interface GameSyncService {
 - **形态**：CloudBase HTTP Function，协议类型 `WS`
 - **运行时**：Node.js + `ws` 库
 - **状态存储**：服务器内存（`Map<roomId, Room>`），游戏结束即清除
-- **广播策略**：所有 `update_*` 消息包含发送者自身（与 Supabase `receiveOwnBroadcasts` 行为一致）
+- **广播策略**：所有 `update_*` 消息包含发送者自身（方便发送端用同一份代码消费广播回调）
 - **心跳**：服务端每 30s ping，客户端每 30s 发送 `ping`，防止网关超时断连
 - **部署约束**：
   - **单实例**（`MinNum: 1, MaxNum: 1`），因为房间状态在内存中，无法水平扩展
@@ -495,12 +612,13 @@ interface GameSyncService {
 
 ### 7.2 技术方案
 
-| iOS 原方案 | Web 新方案 |
-|---|---|
-| `AVSpeechSynthesizer` + `AVAudioSession` | `window.speechSynthesis` + `SpeechSynthesisUtterance` |
-| `AVSpeechSynthesisVoice(language: "zh-CN")` | `utterance.lang = 'zh-CN'` |
-| `AVAudioSession.Category.playback` | 无需特殊配置（浏览器自动处理） |
-| Swift `async/await` + `CheckedContinuation` | `Promise` 包装 `onend` / `onerror` |
+使用浏览器原生 **Web Speech API**：
+
+- `window.speechSynthesis` + `SpeechSynthesisUtterance`
+- `utterance.lang = 'zh-CN'`
+- 用 `Promise` 包装 `onend` / `onerror` 回调，暴露 `async` 接口
+- 语速 `utterance.rate = 0.9 ~ 1.0`（默认 1.0，略慢一点更清晰）
+- 音量/音调使用默认值，不手动控制
 
 ### 7.3 NarrationService 接口
 
@@ -555,7 +673,7 @@ setPublicState({ ..., phaseEndsAt: Date.now() + actionTime * 1000 });
 
 1. **浏览器自动播放策略**：`speechSynthesis` 需要**用户手势**触发首次播放。解决方案：首页"创建房间"按钮点击时预热 TTS（播一段空白 utterance）
 2. **后台 tab 暂停**：浏览器切换到后台 tab 时可能暂停 TTS。解决方案：`speak()` 加 10s 超时兜底，超时自动 resolve，防止整个夜晚流程卡死
-3. **iOS Safari 特殊行为**：需要实测，必要时切换声音 preload 策略
+3. **Safari 行为差异**：需要实测，必要时切换声音 preload 策略
 4. **浏览器语音质量差异**：Chrome/Edge 的中文 TTS 较好，Safari 一般，Firefox 较差；允许用户选择系统 voice 作为后期优化
 
 ---
@@ -702,26 +820,7 @@ MVP 阶段只做关键视觉反馈，后续可拓展。
 
 ---
 
-## 13. 与 iOS 版本的差异对照
-
-| 项 | iOS 原方案 | Web 新方案 |
-|---|---|---|
-| UI 框架 | SwiftUI | React 19 + Tailwind |
-| 架构模式 | MVVM | Hooks + Zustand |
-| 网络同步 | Supabase Realtime → CloudBase WS | CloudBase WS（直接上） |
-| 语音 TTS | AVSpeechSynthesizer | Web Speech API |
-| 头像生成 | Identicon（本地算法） | Identicon（TypeScript 重写） |
-| 身份持久化 | UserDefaults | localStorage |
-| 状态存储 | 内存 + Supabase | 内存 + CloudBase 服务端内存 |
-| 动画 | SwiftUI 原生 | Framer Motion + CSS 3D |
-| 防屏幕休眠 | iOS 原生 | Screen Wake Lock API |
-| 部署 | App Store | CloudBase 静态托管 |
-
-**数据模型、游戏规则、状态机、角色体系完全一致**，仅改变实现载体。
-
----
-
-## 14. 开发优先级（非计划，只是思路）
+## 13. 开发优先级（非计划，只是思路）
 
 优先级由高到低：
 
