@@ -2,12 +2,29 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+@import "@fontsource-variable/fraunces";
+@import "lxgw-wenkai-screen-webfont/lxgwwenkaiscreen.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-heading: var(--font-sans);
-    --font-sans: 'Geist Variable', sans-serif;
+    --font-display: 'Fraunces Variable', 'LXGW WenKai Screen', 'Source Han Serif SC', serif;
+    --font-heading: var(--font-display);
+    --font-sans: 'Geist Variable', 'LXGW WenKai Screen', system-ui, -apple-system, sans-serif;
+
+    --color-night-900: var(--night-900);
+    --color-night-800: var(--night-800);
+    --color-night-700: var(--night-700);
+    --color-parchment: var(--parchment);
+    --color-parchment-dim: var(--parchment-dim);
+    --color-candle-400: var(--candle-400);
+    --color-candle-500: var(--candle-500);
+    --color-candle-600: var(--candle-600);
+    --color-blood-500: var(--blood-500);
+    --color-sage-500: var(--sage-500);
+    --color-moon-100: var(--moon-100);
+    --color-ink-900: var(--ink-900);
+
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -39,6 +56,7 @@
     --color-card: var(--card);
     --color-foreground: var(--foreground);
     --color-background: var(--background);
+
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
@@ -49,82 +67,203 @@
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
-}
+    /* Moonlit Village palette */
+    --night-900: oklch(0.14 0.04 265);
+    --night-800: oklch(0.20 0.04 265);
+    --night-700: oklch(0.28 0.04 265);
+    --parchment: oklch(0.93 0.04 85);
+    --parchment-dim: oklch(0.82 0.05 85);
+    --candle-400: oklch(0.85 0.12 78);
+    --candle-500: oklch(0.78 0.13 75);
+    --candle-600: oklch(0.65 0.13 70);
+    --blood-500: oklch(0.58 0.17 25);
+    --sage-500: oklch(0.62 0.08 145);
+    --moon-100: oklch(0.97 0.01 260);
+    --ink-900: oklch(0.20 0.02 40);
 
-.dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    /* shadcn mapping — dark-first, Moonlit Village */
+    --background: var(--night-900);
+    --foreground: var(--moon-100);
+    --card: var(--night-800);
+    --card-foreground: var(--moon-100);
+    --popover: var(--night-800);
+    --popover-foreground: var(--moon-100);
+    --primary: var(--candle-500);
+    --primary-foreground: var(--ink-900);
+    --secondary: var(--night-700);
+    --secondary-foreground: var(--moon-100);
+    --muted: var(--night-700);
+    --muted-foreground: oklch(0.72 0.03 265);
+    --accent: var(--candle-500);
+    --accent-foreground: var(--ink-900);
+    --destructive: var(--blood-500);
+    --border: oklch(1 0 0 / 8%);
+    --input: oklch(1 0 0 / 10%);
+    --ring: var(--candle-500);
+
+    --chart-1: var(--candle-500);
+    --chart-2: var(--sage-500);
+    --chart-3: var(--blood-500);
+    --chart-4: oklch(0.62 0.10 220);
+    --chart-5: var(--parchment);
+
+    --radius: 0.75rem;
+
+    --sidebar: var(--night-800);
+    --sidebar-foreground: var(--moon-100);
+    --sidebar-primary: var(--candle-500);
+    --sidebar-primary-foreground: var(--ink-900);
+    --sidebar-accent: var(--night-700);
+    --sidebar-accent-foreground: var(--moon-100);
+    --sidebar-border: oklch(1 0 0 / 8%);
+    --sidebar-ring: var(--candle-500);
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
+    * {
+        @apply border-border outline-ring/50;
     }
-  body {
-    @apply bg-background text-foreground;
+    html {
+        @apply font-sans;
+        /* 移动端基础 */
+        height: 100%;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+        overscroll-behavior: none;
     }
-  html {
-    @apply font-sans;
+    body {
+        @apply bg-background text-foreground;
+        min-height: 100vh;
+        min-height: 100dvh;
+        /* 防止横向溢出 */
+        overflow-x: hidden;
+        /* 禁止 iOS 长按选中菜单（游戏界面不需要文本选择） */
+        -webkit-user-select: none;
+        user-select: none;
+        /* 安全区适配 */
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+        background-image:
+            radial-gradient(ellipse at top, oklch(0.22 0.06 265) 0%, transparent 60%),
+            radial-gradient(ellipse at bottom, oklch(0.18 0.05 280) 0%, transparent 60%);
+        background-attachment: fixed;
     }
+    /* 输入框允许选中 */
+    input, textarea {
+        -webkit-user-select: text;
+        user-select: text;
+    }
+    /* 所有可点击元素最小触控区 */
+    button, a, [role="button"] {
+        touch-action: manipulation;
+    }
+    body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 1;
+        opacity: 0.04;
+        mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.6'/></svg>");
+    }
+    h1, h2, h3, h4 {
+        font-family: var(--font-display);
+        font-feature-settings: "ss01", "ss02";
+        letter-spacing: -0.01em;
+    }
+}
+
+/* ----- Moonlit Village @utility 扩展 ----- */
+
+@utility card-parchment {
+    background-color: var(--parchment);
+    color: var(--ink-900);
+    border-radius: 0.75rem;
+    box-shadow:
+        0 1px 2px oklch(0 0 0 / 0.2),
+        0 8px 20px oklch(0 0 0 / 0.4),
+        inset 0 0 0 1px oklch(0.7 0.08 80 / 0.15);
+    background-image:
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.15  0 0 0 0 0.10  0 0 0 0 0.05  0 0 0 0.35 0'/></filter><rect width='100%25' height='100%25' filter='url(%23g)'/></svg>"),
+        linear-gradient(135deg, var(--parchment) 0%, oklch(0.89 0.05 85) 100%);
+    background-blend-mode: multiply;
+}
+
+@utility card-parchment-dim {
+    background-color: var(--parchment-dim);
+    color: var(--ink-900);
+    border-radius: 0.75rem;
+    box-shadow:
+        0 1px 2px oklch(0 0 0 / 0.15),
+        0 4px 12px oklch(0 0 0 / 0.3);
+    opacity: 0.85;
+}
+
+@utility candle-glow {
+    box-shadow:
+        0 0 24px oklch(0.78 0.13 75 / 0.35),
+        0 0 48px oklch(0.78 0.13 75 / 0.15);
+}
+
+@utility candle-text-glow {
+    text-shadow:
+        0 0 8px oklch(0.85 0.12 78 / 0.6),
+        0 0 16px oklch(0.78 0.13 75 / 0.35);
+}
+
+@utility night-panel {
+    background-color: var(--night-800);
+    border: 1px solid oklch(1 0 0 / 0.08);
+    border-radius: 1rem;
+    backdrop-filter: blur(8px);
+}
+
+@utility breathing-pulse {
+    animation: breathing 3s ease-in-out infinite;
+}
+
+@utility grain-overlay {
+    position: relative;
+    &::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0.05;
+        mix-blend-mode: overlay;
+        border-radius: inherit;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    }
+}
+
+@keyframes breathing {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.02); }
+}
+
+@keyframes flicker {
+    0%, 100% { opacity: 1; }
+    48% { opacity: 0.92; }
+    52% { opacity: 1; }
+    70% { opacity: 0.96; }
+}
+
+@utility candle-flicker {
+    animation: flicker 4s ease-in-out infinite;
+}
+
+@keyframes twinkle {
+    0%, 100% { opacity: 0.3; transform: scale(0.9); }
+    50% { opacity: 1; transform: scale(1.1); }
+}
+
+@keyframes drift {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+
+@utility floating-drift {
+    animation: drift 6s ease-in-out infinite;
 }

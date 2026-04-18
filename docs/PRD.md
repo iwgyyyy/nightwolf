@@ -788,6 +788,33 @@ MVP 阶段只做关键视觉反馈，后续可拓展。
 - 结算阶段由 Host 将完整数据写入 `publicState.resultData`，所有人可见
 - **不防客户端破解**（信任模式，朋友间游玩）：前端理论上可通过 DevTools 查看 WebSocket 消息，但目标用户不会这样做
 
+### 11.1 创建房间的管理员鉴权
+
+防止公网部署后被陌生人乱开房间占资源。
+
+**规则：**
+- **创建房间**必须通过管理员用户名 + 密码验证
+- **加入房间**不需要（朋友凭房间 ID 即可加入）
+- 验证通过后**长期记住**（localStorage 持久化），同一浏览器下次免重复输入
+- 用户可主动点击"已授权 · 点击退出"徽章撤销权限
+
+**实现分两层：**
+
+| 层 | 作用 | 存储位置 |
+|---|---|---|
+| 前端（UX 门槛） | 拦截普通访客，不弹出创建流程 | `VITE_ADMIN_USERNAME` / `VITE_ADMIN_PASSWORD` 环境变量（打包进 bundle） |
+| 后端 relay（真正的安全校验）| `create_room` 消息带凭证字段，服务端用环境变量 `ADMIN_USERNAME` / `ADMIN_PASSWORD` 校验，不通过直接拒绝 | CloudBase 云函数环境变量（不进入客户端） |
+
+**关键文件：**
+- `.env.local`（gitignore）：生产真实凭证
+- `.env.example`（入库）：占位样例
+- `src/config/auth.ts`：读取环境变量 + `verifyAdmin()` 校验函数
+- `src/stores/authStore.ts`：Zustand + persist（localStorage）存 `isAdmin` 布尔
+- `src/components/AdminAuthDialog.tsx`：shadcn Dialog + react-hook-form + zod 验证表单
+- HomePage："创建房间"按钮 → 未授权弹 Dialog，授权后继续
+
+**注意：** 前端 `VITE_*` 环境变量会被打包进客户端 bundle，有 DevTools 的人能看到。前端校验只是 UX 门槛，**真正的强校验由 Phase 7 的 WebSocket relay 服务端完成**。
+
 ---
 
 ## 12. 生命周期与部署

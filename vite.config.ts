@@ -11,4 +11,8 @@ export default defineConfig({
 			'@': path.resolve(__dirname, './src'),
 		},
 	},
+	server: {
+		// 监听所有网卡，让同一局域网内的手机/电脑都能访问 dev server
+		host: true,
+	},
 });

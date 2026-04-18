@@ -1,0 +1,134 @@
+import { useEffect } from "react"
+import { useNavigate } from "react-router"
+import { toast } from "sonner"
+import { getSyncService, SyncError } from "@/sync"
+import { useGameStore, type LobbyError } from "@/stores/gameStore"
+import { useLocalPlayer } from "./use-local-player"
+import { isValidRoomId } from "@/services/roomId"
+
+interface UseGameSyncOptions {
+  /** 房间 ID（未提供时不做任何事） */
+  roomId: string | undefined
+  /** 用户是否已填写昵称（未填写时阻塞连接） */
+  enabled?: boolean
+}
+
+/**
+ * 将 `GameSyncService` 订阅桥接到 `gameStore`。
+ *
+ * 职责：
+ *  - 加入房间（upsert 本玩家）
+ *  - 订阅 publicState / privateState / hostState（按需）
+ *  - 监听 `onActionReceived`，写入 store.pendingHostAction，由编排层消费
+ *  - 监听 `onRoomDeleted`，toast + 跳首页
+ *  - 维护 connectionStatus、joinError
+ *  - 卸载时 cleanup
+ */
+export function useGameSync({ roomId, enabled = true }: UseGameSyncOptions) {
+  const navigate = useNavigate()
+  const { playerId, name } = useLocalPlayer()
+  const publicState = useGameStore((s) => s.publicState)
+
+  const isHost = publicState?.hostId === playerId
+
+  useEffect(() => {
+    if (!enabled || !roomId) return
+    if (!isValidRoomId(roomId)) {
+      useGameStore.getState().setJoinError("invalid")
+      return
+    }
+
+    const store = useGameStore.getState()
+    store.setCurrentRoom(roomId)
+    store.setConnectionStatus("connecting")
+    store.setJoinError(null)
+
+    const sync = getSyncService()
+
+    // 订阅 publicState
+    const unsubPublic = sync.onPublicStateChanged(roomId, (state) => {
+      useGameStore.getState().setPublicState(state)
+      useGameStore.getState().setConnectionStatus("connected")
+    })
+
+    // 订阅本玩家私有状态
+    const unsubPrivate = sync.onPrivateStateChanged(roomId, playerId, (state) => {
+      useGameStore.getState().setPrivateState(state)
+    })
+
+    // Host 订阅 hostState 和 actions（先全员订阅，Host 判断在接收端做）
+    const unsubHost = sync.onHostStateChanged(roomId, (state) => {
+      useGameStore.getState().setHostState(state)
+    })
+
+    const unsubAction = sync.onActionReceived(roomId, (pid, action) => {
+      // 只有 Host 消费 actions
+      const { publicState: ps, currentRoomId } = useGameStore.getState()
+      if (!ps || currentRoomId !== roomId) return
+      if (ps.hostId !== playerId) return
+      useGameStore.getState().setPendingHostAction({ playerId: pid, action })
+    })
+
+    // 房间解散
+    const unsubDelete = sync.onRoomDeleted(roomId, () => {
+      toast.info("房间已被房主解散")
+      useGameStore.getState().resetRoom()
+      navigate("/", { replace: true })
+    })
+
+    // 连接状态 → store + toast 提示
+    let firstStatus = true
+    const unsubConn = sync.onConnectionChange((status) => {
+      const store = useGameStore.getState()
+      // 首次是 initial 推送，不 toast
+      if (!firstStatus) {
+        if (status === "disconnected") {
+          toast.warning("连接已断开，正在尝试重连…")
+        } else if (status === "connected") {
+          toast.success("已重新连接")
+        }
+      }
+      firstStatus = false
+
+      if (status === "connected") store.setConnectionStatus("connected")
+      else if (status === "disconnected") store.setConnectionStatus("disconnected")
+      else store.setConnectionStatus("connecting")
+    })
+
+    // 发起加入
+    sync
+      .joinRoom(roomId, { playerId, name, isConnected: true })
+      .catch((err: unknown) => {
+        const reason: LobbyError = mapJoinError(err)
+        useGameStore.getState().setJoinError(reason)
+        useGameStore.getState().setConnectionStatus("error")
+      })
+
+    return () => {
+      unsubPublic()
+      unsubPrivate()
+      unsubHost()
+      unsubAction()
+      unsubDelete()
+      unsubConn()
+    }
+  }, [roomId, enabled, playerId, name, navigate])
+
+  // 组件卸载（例如离开房间路由）时清理 store
+  useEffect(() => {
+    return () => {
+      useGameStore.getState().resetRoom()
+    }
+  }, [])
+
+  return { playerId, isHost }
+}
+
+function mapJoinError(err: unknown): LobbyError {
+  if (err instanceof SyncError) {
+    if (err.code === "ROOM_NOT_FOUND") return "not-found"
+    if (err.code === "GAME_IN_PROGRESS") return "in-progress"
+    if (err.code === "ROOM_FULL") return "full"
+  }
+  return "unknown"
+}
