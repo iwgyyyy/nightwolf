@@ -13,6 +13,8 @@ export interface TablePlayer {
   isEliminated?: boolean
   /** 危险高亮（狼人/出局预警） */
   danger?: boolean
+  /** 投票目标标记（头像上半透明 Check） */
+  votedMark?: boolean
   /** 上下浮动（闭眼漂浮） */
   floating?: boolean
   /** 睡眠状态叠加 Zz + 月亮 */
@@ -110,6 +112,7 @@ export function PlayerTable({
               selected={selected}
               floating={p.floating}
               danger={p.danger}
+              votedMark={p.votedMark}
               below={p.below}
               onClick={onPlayerClick ? () => onPlayerClick(p.playerId) : undefined}
             />

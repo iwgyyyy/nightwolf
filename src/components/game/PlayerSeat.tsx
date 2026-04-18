@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion"
-import { Crown, Moon } from "lucide-react"
+import { Crown, Moon, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PlayerAvatar } from "./PlayerAvatar"
 
@@ -28,6 +28,8 @@ interface PlayerSeatProps {
   isEliminated?: boolean
   /** 被选中（作为夜晚目标、投票目标） */
   selected?: boolean
+  /** 被自己投出的标记：头像上半透明 Check（用于 VotingScreen） */
+  votedMark?: boolean
   /** 上下浮动（闭眼漂浮效果，通常只给"自己"在闭眼时用） */
   floating?: boolean
   /** 危险高亮（狼人 / 出局预警）：红色光晕 */
@@ -54,6 +56,7 @@ export function PlayerSeat({
   isSleeping = false,
   isEliminated = false,
   selected = false,
+  votedMark = false,
   floating = false,
   danger = false,
   onClick,
@@ -136,6 +139,11 @@ export function PlayerSeat({
 
         {/* 出局打叉 */}
         {isEliminated && <EliminationMark />}
+
+        {/* 投票目标标记：头像正中半透明 Check，名字不遮 */}
+        <AnimatePresence>
+          {votedMark && !isEliminated && <VotedMark size={cfg.avatar} />}
+        </AnimatePresence>
       </div>
 
       {/* 名字 + 你标记 */}
@@ -203,6 +211,33 @@ function SleepZ() {
     >
       Z
     </motion.span>
+  )
+}
+
+function VotedMark({ size }: { size: number }) {
+  return (
+    <motion.div
+      aria-hidden
+      initial={{ scale: 0.4, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      exit={{ scale: 0.6, opacity: 0 }}
+      transition={{
+        duration: 0.35,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+      className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-full"
+      style={{
+        background:
+          "radial-gradient(circle, oklch(0.62 0.08 145 / 0.75), oklch(0.62 0.08 145 / 0.35) 65%, transparent 80%)",
+      }}
+    >
+      <div
+        className="flex items-center justify-center rounded-full bg-sage-500 text-night-900 shadow-lg"
+        style={{ width: size * 0.6, height: size * 0.6 }}
+      >
+        <Check style={{ width: size * 0.42, height: size * 0.42 }} strokeWidth={3} />
+      </div>
+    </motion.div>
   )
 }
 

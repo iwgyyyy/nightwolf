@@ -62,16 +62,28 @@ export default function VotingScreen() {
     void submit(targetId)
   }
 
-  const tablePlayers = players.map((p) => ({
-    playerId: p.playerId,
-    name: p.name,
-    isHost: p.playerId === hostId,
-    isYou: p.playerId === playerId,
-    isConnected: p.isConnected,
-    // 已投过票的玩家用 "isActive" 高亮
-    isActive: publicState.submittedPlayerIds.includes(p.playerId),
-  }))
+  const pickedName = players.find((p) => p.playerId === localPick)?.name
+  const tablePlayers = players.map((p) => {
+    const isMe = p.playerId === playerId
+    return {
+      playerId: p.playerId,
+      name: p.name,
+      isHost: p.playerId === hostId,
+      isYou: isMe,
+      isConnected: p.isConnected,
+      // 已投过票的玩家用 "isActive" 高亮（仅自己本地推断：submittedPlayerIds 公开）
+      isActive: publicState.submittedPlayerIds.includes(p.playerId),
+      // 被我投的那个人：头像上半透明 Check（仅本地渲染，不广播给别人）
+      votedMark: !isMe && localPick === p.playerId,
+      // 只有"我"这格下方显示"你投了 X"标签
+      below:
+        isMe && localPick && pickedName ? (
+          <VoteTargetTag targetName={pickedName} />
+        ) : null,
+    }
+  })
 
+  // selectedPlayerIds 仍然传（兼容），但主要视觉交给 votedMark
   const selected = localPick ? [localPick] : []
 
   return (
@@ -114,7 +126,9 @@ export default function VotingScreen() {
             <div className="flex flex-col items-center gap-2 text-center">
               <Scale className="h-8 w-8 text-blood-500/70" strokeWidth={1} />
               <p className="font-display text-xs tracking-wider text-moon-100/55">
-                {hasSubmitted ? "已投票（可改）" : "点击一名玩家投票"}
+                {hasSubmitted
+                  ? "已投票 · 点其他玩家可改投"
+                  : "点击一名玩家投票"}
               </p>
             </div>
           }
@@ -137,5 +151,16 @@ export default function VotingScreen() {
         </p>
       </div>
     </main>
+  )
+}
+
+function VoteTargetTag({ targetName }: { targetName: string }) {
+  return (
+    <span
+      className="inline-flex max-w-[9em] items-center gap-1 truncate rounded-full border border-sage-500/40 bg-sage-500/15 px-2 py-0.5 text-[10px] tracking-wider text-sage-500"
+      title={`你投给了 ${targetName}`}
+    >
+      投给 <span className="truncate font-medium text-moon-100">{targetName}</span>
+    </span>
   )
 }
