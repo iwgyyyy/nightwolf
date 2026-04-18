@@ -2,6 +2,8 @@
 
 月夜村落主题的多人 Web 狼人杀。分享一个链接就能和朋友开黑，桌面/手机/微信浏览器通用。
 
+> 🌐 [English README](docs/README.en.md)
+
 ![tech stack](https://img.shields.io/badge/Vite-8-646cff) ![tech stack](https://img.shields.io/badge/React-19-61dafb) ![tech stack](https://img.shields.io/badge/TypeScript-6-3178c6) ![tech stack](https://img.shields.io/badge/Tailwind-4-06b6d4)
 
 > [!IMPORTANT]
