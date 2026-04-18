@@ -30,10 +30,18 @@ import type {
   Vote,
 } from "@/types"
 
-// 夜晚步骤 / 白天讨论 / 投票的定时推进。模块级单例：整个应用只会有一个 Host。
+// 发牌 / 夜晚步骤 / 白天讨论 / 投票的定时推进。模块级单例。
+let dealingTimer: ReturnType<typeof setTimeout> | null = null
 let nightStepTimer: ReturnType<typeof setTimeout> | null = null
 let dayTimer: ReturnType<typeof setTimeout> | null = null
 let voteTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearDealingTimer(): void {
+  if (dealingTimer) {
+    clearTimeout(dealingTimer)
+    dealingTimer = null
+  }
+}
 
 function clearNightStepTimer(): void {
   if (nightStepTimer) {
@@ -57,6 +65,7 @@ function clearVoteTimer(): void {
 }
 
 function clearAllPhaseTimers(): void {
+  clearDealingTimer()
   clearNightStepTimer()
   clearDayTimer()
   clearVoteTimer()
@@ -139,6 +148,14 @@ function recoverPhaseTimer(roomId: string, ps: PublicRoomState): void {
   )
 
   switch (ps.gamePhase) {
+    case "dealing": {
+      clearDealingTimer()
+      dealingTimer = setTimeout(() => {
+        dealingTimer = null
+        void forceEnterNightFromDealing(roomId)
+      }, remainingMs)
+      return
+    }
     case "night": {
       const stepIndex = ps.currentNightStep ?? 0
       clearNightStepTimer()
@@ -165,7 +182,7 @@ function recoverPhaseTimer(roomId: string, ps: PublicRoomState): void {
       return
     }
     default:
-      return // dealing / waiting / result：不需要 timer
+      return // waiting / result：不需要 timer
   }
 }
 
@@ -212,6 +229,8 @@ async function handleConfirm(
   const sync = getSyncService()
   const { publicState: next, allConfirmed } = handleConfirmIdentity(ps, playerId)
   if (allConfirmed) {
+    // 全员确认，取消发牌兜底 timer（避免重复推进）
+    clearDealingTimer()
     // 切 UI 到 night + step=0（非 Host 客户端同步通过 useNarrationSync 本地播"天黑+狼人睁眼"）
     const nightBase: PublicRoomState = {
       ...next,
@@ -602,6 +621,7 @@ async function finalizeVoting(roomId: string): Promise<void> {
 // ============================================================
 
 export async function hostStartGame(roomId: string): Promise<void> {
+  clearAllPhaseTimers()
   const store = useGameStore.getState()
   const ps = store.publicState
   if (!ps) {
@@ -612,6 +632,8 @@ export async function hostStartGame(roomId: string): Promise<void> {
   try {
     const { publicState, hostState, privateStates } = buildStartGameStates(ps)
     await broadcastGameStart(roomId, publicState, hostState, privateStates)
+    // 发牌超时兜底：到时把所有未确认玩家视为确认，强制进入夜晚
+    scheduleDealingTimeout(roomId, publicState)
   } catch (err) {
     if (err instanceof StartGameError) {
       toast.error(err.message)
@@ -619,6 +641,40 @@ export async function hostStartGame(roomId: string): Promise<void> {
       toast.error("开始游戏失败")
     }
   }
+}
+
+/** 在 dealing 阶段设定一个兜底 timer：到期强制把所有玩家视为确认并进入夜晚 */
+function scheduleDealingTimeout(
+  roomId: string,
+  publicState: PublicRoomState,
+): void {
+  clearDealingTimer()
+  const endsAt = publicState.phaseEndsAt
+  if (!endsAt) return
+  const remainingMs = Math.max(0, new Date(endsAt).getTime() - Date.now())
+  dealingTimer = setTimeout(() => {
+    dealingTimer = null
+    void forceEnterNightFromDealing(roomId)
+  }, remainingMs)
+}
+
+/** 发牌超时：跳过未确认玩家，直接进入夜晚 step 0 */
+async function forceEnterNightFromDealing(roomId: string): Promise<void> {
+  const sync = getSyncService()
+  const ps = useGameStore.getState().publicState
+  if (!ps) return
+  if (ps.gamePhase !== "dealing") return // 已经被正常推进
+
+  const nightBase: PublicRoomState = {
+    ...ps,
+    gamePhase: "night",
+    phaseStartedAt: new Date().toISOString(),
+    phaseEndsAt: null,
+    currentNightStep: 0,
+    submittedPlayerIds: [],
+  }
+  await sync.updatePublicState(roomId, nightBase)
+  await enterNightStep(roomId, 0, nightBase)
 }
 
 export async function hostPlayAgain(roomId: string): Promise<void> {

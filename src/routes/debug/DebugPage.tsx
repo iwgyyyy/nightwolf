@@ -29,6 +29,7 @@ export default function DebugPage() {
   const [flipped, setFlipped] = useState<Record<Role, boolean>>({} as Record<Role, boolean>)
   const [countdownEndsAt, setCountdownEndsAt] = useState<string | null>(null)
   const [transitionPhase, setTransitionPhase] = useState<GamePhase | null>(null)
+  const [transitionNonce, setTransitionNonce] = useState(0)
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null)
   const [endsInFew] = useState(() =>
     new Date(Date.now() + 4000).toISOString(),
@@ -195,16 +196,19 @@ export default function DebugPage() {
                 key={phase}
                 variant="outline"
                 size="sm"
-                onClick={() => setTransitionPhase(phase)}
+                onClick={() => {
+                  setTransitionPhase(phase)
+                  setTransitionNonce((n) => n + 1)
+                }}
               >
                 预览 {phase}
               </Button>
             ))}
           </div>
           <PhaseTransition
+            key={transitionNonce}
             phase={transitionPhase}
-            duration={1800}
-            onComplete={() => setTransitionPhase(null)}
+            duration={900}
           />
         </Section>
       </div>

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import type { GamePhase } from "@/types"
 
@@ -41,46 +42,54 @@ interface PhaseTransitionProps {
   phase: GamePhase | null
   /** 显示时长（毫秒），0 = 持续显示直到 phase 改变 */
   duration?: number
-  onComplete?: () => void
 }
 
 /**
  * 阶段切换全屏过场：深色遮罩 + 大标题入场淡出。
- * 通过 `phase` 的变化触发。传入 null 时不显示。
+ * 每次 `phase` 变化显示 `duration` 毫秒后自动消失。
+ * 用 `key={phase}` 让内部组件每次重 mount，确保计时干净。
  */
 export function PhaseTransition({
   phase,
-  duration = 1600,
-  onComplete,
+  duration = 900,
 }: PhaseTransitionProps) {
+  if (!phase) return null
+  return <PhaseTransitionBody key={phase} phase={phase} duration={duration} />
+}
+
+function PhaseTransitionBody({
+  phase,
+  duration,
+}: {
+  phase: GamePhase
+  duration: number
+}) {
+  const [visible, setVisible] = useState(true)
+
+  useEffect(() => {
+    if (duration <= 0) return
+    const t = setTimeout(() => setVisible(false), duration)
+    return () => clearTimeout(t)
+  }, [duration])
+
   return (
-    <AnimatePresence
-      onExitComplete={() => {
-        if (duration > 0) onComplete?.()
-      }}
-    >
-      {phase && (
+    <AnimatePresence>
+      {visible && (
         <motion.div
-          key={phase}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.4 }}
           className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-night-900/90 backdrop-blur-sm"
-          onAnimationComplete={() => {
-            if (duration > 0) {
-              setTimeout(() => onComplete?.(), duration)
-            }
-          }}
         >
           <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
             transition={{
-              duration: 0.8,
+              duration: 0.6,
               ease: [0.22, 1, 0.36, 1],
-              delay: 0.1,
+              delay: 0.05,
             }}
             className="text-center"
           >

@@ -76,7 +76,7 @@ export default function GamePage() {
   return (
     <>
       <PhaseDispatcher phase={phase} />
-      <PhaseTransition phase={phase} duration={1200} />
+      <PhaseTransition phase={phase} duration={900} />
       <AnimatePresence>
         {publicState.isPaused && <PausedOverlay hostName={hostName} />}
       </AnimatePresence>
