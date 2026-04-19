@@ -54,27 +54,29 @@ describe("applyNightAction", () => {
   })
 
   describe("狼人互认 werewolfConfirm", () => {
-    it("展示其他狼人（不含自己）", () => {
+    it("返回 noResult（互认面板已展示队友，无需再翻牌）", () => {
       const state = makeState({
         allPlayerRoles: { p1: "werewolf", p2: "werewolf", p3: "villager" },
       })
-      const { result } = applyNightAction(state, "p1", {
+      const { state: next, result } = applyNightAction(state, "p1", {
         kind: "werewolfConfirm",
       })
-      expect(result).toEqual({
-        kind: "rolesRevealed",
-        roles: { p2: "werewolf" },
+      expect(result).toEqual({ kind: "noResult" })
+      // 但审计记录里仍然保留 revealedRoles
+      expect(next.nightActions[0]).toMatchObject({
+        actionType: "werewolfConfirm",
+        revealedRoles: { p2: "werewolf" },
       })
     })
 
-    it("独狼时返回空", () => {
+    it("独狼时也返回 noResult", () => {
       const state = makeState({
         allPlayerRoles: { p1: "werewolf", p2: "villager" },
       })
       const { result } = applyNightAction(state, "p1", {
         kind: "werewolfConfirm",
       })
-      expect(result).toEqual({ kind: "rolesRevealed", roles: {} })
+      expect(result).toEqual({ kind: "noResult" })
     })
   })
 

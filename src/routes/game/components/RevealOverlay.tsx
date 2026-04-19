@@ -63,7 +63,25 @@ function RevealBody({ result }: { result: NightActionResult }) {
       return [{ id: "self", role: result.newRole, isSelf: true }]
     }
     if (result.kind === "rolesRevealed") {
-      return Object.entries(result.roles).map(([id, role]) => ({ id, role }))
+      const raw = Object.entries(result.roles).map(([id, role]) => ({
+        id,
+        role,
+      }))
+      // 桌面牌始终按 center_0 / center_1 / center_2 的原始位置从左到右展示；
+      // 玩家类 id 保持原顺序（稳定排序）
+      return raw.sort((a, b) => {
+        const aCenter = a.id.startsWith("center_")
+        const bCenter = b.id.startsWith("center_")
+        if (aCenter && bCenter) {
+          return (
+            Number(a.id.slice("center_".length)) -
+            Number(b.id.slice("center_".length))
+          )
+        }
+        if (aCenter) return 1
+        if (bCenter) return -1
+        return 0
+      })
     }
     return []
   }, [result])

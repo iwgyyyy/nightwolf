@@ -51,12 +51,9 @@ export default function NightScreen() {
         actionTime={publicState.settings.actionTime}
       />
 
-      {/* 沉浸式圆桌：留足上边距，避免 overlay 的外扩（-60px）吃到倒计时环 */}
+      {/* 沉浸式圆桌 */}
       <div className="mt-20 w-full">
-        <NightTable
-          currentStepRole={currentStepRole}
-          isActorThisStep={isActorThisStep}
-        />
+        <NightTable isActorThisStep={isActorThisStep} />
       </div>
 
       {/* 底部：操作面板 / 等待提示（z-40 确保不被圆桌遮罩覆盖） */}
@@ -91,7 +88,7 @@ function NightTopBar({
     <motion.header
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative z-40 flex w-full flex-col items-center gap-3"
+      className="relative z-50 flex w-full flex-col items-center gap-3"
     >
       <p className="font-sans text-[0.65rem] uppercase tracking-[0.4em] text-candle-500/70">
         Night · 夜晚阶段

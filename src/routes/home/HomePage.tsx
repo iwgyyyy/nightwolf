@@ -4,6 +4,7 @@ import { Moon, ShieldCheck, UserRound, DoorOpen, Sparkles } from "lucide-react"
 import { useNavigate } from "react-router"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { AdminAuthDialog } from "@/components/AdminAuthDialog"
 import { NamePromptDialog } from "@/components/NamePromptDialog"
 import { JoinRoomDialog } from "@/components/JoinRoomDialog"
@@ -459,22 +460,25 @@ interface ActionCardProps {
 
 function ActionCard({ icon, title, subtitle, onClick, primary }: ActionCardProps) {
   return (
-    <button
+    <Button
       type="button"
       onClick={onClick}
-      className={`group relative overflow-hidden rounded-2xl border text-left transition-all duration-300 ${
+      variant={primary ? "default" : "outline"}
+      className={cn(
+        "group relative h-auto w-full justify-start overflow-hidden rounded-2xl border px-6 py-5 text-left transition-all duration-300",
         primary
-          ? "border-candle-500/40 bg-candle-500/10 hover:border-candle-500/70 hover:bg-candle-500/15 hover:shadow-[0_0_32px_oklch(0.78_0.13_75/0.25)]"
-          : "border-moon-100/10 bg-night-800/50 hover:border-moon-100/25 hover:bg-night-800/80"
-      }`}
+          ? "border-candle-500/40 bg-candle-500/10 text-moon-100 hover:border-candle-500/70 hover:bg-candle-500/15 hover:shadow-[0_0_32px_oklch(0.78_0.13_75/0.25)]"
+          : "border-moon-100/10 bg-night-800/50 text-moon-100 hover:border-moon-100/25 hover:bg-night-800/80 hover:text-moon-100",
+      )}
     >
-      <div className="flex items-center gap-4 px-6 py-5">
+      <div className="flex w-full items-center gap-4">
         <div
-          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${
+          className={cn(
+            "flex h-12 w-12 shrink-0 items-center justify-center rounded-full",
             primary
               ? "bg-candle-500 text-ink-900"
-              : "bg-night-700 text-moon-100/80 group-hover:bg-night-700/80"
-          }`}
+              : "bg-night-700 text-moon-100/80 group-hover:bg-night-700/80",
+          )}
         >
           {icon}
         </div>
@@ -484,7 +488,7 @@ function ActionCard({ icon, title, subtitle, onClick, primary }: ActionCardProps
         </div>
         <ChevronArrow />
       </div>
-    </button>
+    </Button>
   )
 }
 

@@ -1,7 +1,8 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router"
 import { motion } from "framer-motion"
 import {
+  Check,
   ChevronLeft,
   Copy,
   Crown,
@@ -65,6 +66,8 @@ export default function LobbyPage() {
   const errorReason: JoinErrorReason | null = joinError
   const nameOpen = !hasName && !errorReason
 
+  const [roomIdCopied, setRoomIdCopied] = useState(false)
+
   // 游戏开始后跳转到 GamePage
   useEffect(() => {
     if (publicState && publicState.gamePhase !== "waiting" && roomId) {
@@ -77,10 +80,15 @@ export default function LobbyPage() {
   }
 
   const copyRoomId = async () => {
-    if (!roomId) return
+    if (!roomId || roomIdCopied) return
     const ok = await copyToClipboard(roomId)
-    if (ok) toast.success("房间号已复制")
-    else toast.error("复制失败")
+    if (ok) {
+      setRoomIdCopied(true)
+      toast.success("房间号已复制")
+      setTimeout(() => setRoomIdCopied(false), 2000)
+    } else {
+      toast.error("复制失败")
+    }
   }
 
   const handleLeave = async () => {
@@ -125,6 +133,7 @@ export default function LobbyPage() {
         isHost={isHost}
         currentPlayerId={playerId}
         onCopyRoomId={copyRoomId}
+        roomIdCopied={roomIdCopied}
         onLeave={handleLeave}
         onRolesChange={handleRolesChange}
         onSettingsChange={handleSettingsChange}
@@ -138,6 +147,7 @@ export default function LobbyPage() {
         isHost={isHost}
         currentPlayerId={playerId}
         onCopyRoomId={copyRoomId}
+        roomIdCopied={roomIdCopied}
         onLeave={handleLeave}
         onRolesChange={handleRolesChange}
         onSettingsChange={handleSettingsChange}
@@ -168,6 +178,7 @@ interface LayoutProps {
   isHost: boolean
   currentPlayerId: string
   onCopyRoomId: () => void
+  roomIdCopied: boolean
   onLeave: () => void
   onRolesChange: (roles: Role[]) => void
   onSettingsChange: (patch: Partial<RoomSettings>) => void
@@ -184,6 +195,7 @@ function MobileLayout({
   isHost,
   currentPlayerId,
   onCopyRoomId,
+  roomIdCopied,
   onLeave,
   onRolesChange,
   onSettingsChange,
@@ -208,6 +220,7 @@ function MobileLayout({
         isHost={isHost}
         roomId={roomId}
         onCopyRoomId={onCopyRoomId}
+        roomIdCopied={roomIdCopied}
       />
 
       <section className="relative z-10 mt-6">
@@ -276,16 +289,22 @@ function MobileTopbar({
   isHost,
   roomId,
   onCopyRoomId,
+  roomIdCopied,
 }: {
   onLeave: () => void
   isHost: boolean
   roomId: string
   onCopyRoomId: () => void
+  roomIdCopied: boolean
 }) {
   return (
     <header className="relative z-10 flex items-center justify-between">
       <LeaveButton isHost={isHost} onLeave={onLeave} />
-      <RoomCodePill roomId={roomId} onClick={onCopyRoomId} />
+      <RoomCodePill
+        roomId={roomId}
+        onClick={onCopyRoomId}
+        copied={roomIdCopied}
+      />
       <div className="w-9" />
     </header>
   )
@@ -301,6 +320,7 @@ function DesktopLayout({
   isHost,
   currentPlayerId,
   onCopyRoomId,
+  roomIdCopied,
   onLeave,
   onRolesChange,
   onSettingsChange,
@@ -325,7 +345,11 @@ function DesktopLayout({
             <span>Nightwolf</span>
           </div>
         </div>
-        <RoomCodePill roomId={roomId} onClick={onCopyRoomId} />
+        <RoomCodePill
+          roomId={roomId}
+          onClick={onCopyRoomId}
+          copied={roomIdCopied}
+        />
       </header>
 
       {/* 双栏主体 */}
@@ -402,14 +426,29 @@ function DesktopLayout({
             <button
               type="button"
               onClick={onCopyRoomId}
-              className="mt-3 w-full rounded-lg bg-night-900/40 py-4 transition hover:bg-night-900/70"
+              disabled={roomIdCopied}
+              className={cn(
+                "mt-3 w-full rounded-lg bg-night-900/40 py-4 transition",
+                roomIdCopied
+                  ? "cursor-default"
+                  : "hover:bg-night-900/70 cursor-pointer",
+              )}
             >
               <p className="font-mono text-3xl tracking-[0.4em] text-candle-500 candle-text-glow">
                 {roomId}
               </p>
               <p className="mt-2 flex items-center justify-center gap-1 text-[0.65rem] tracking-[0.25em] text-moon-100/40 uppercase">
-                <Copy className="h-3 w-3" />
-                点击复制
+                {roomIdCopied ? (
+                  <>
+                    <Check className="h-3 w-3" />
+                    已复制
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3 w-3" />
+                    点击复制
+                  </>
+                )}
               </p>
             </button>
           </motion.div>
@@ -535,19 +574,29 @@ function LeaveButton({
 function RoomCodePill({
   roomId,
   onClick,
+  copied,
 }: {
   roomId: string
   onClick: () => void
+  copied: boolean
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-2 rounded-full bg-night-800/60 px-4 py-1.5 text-sm font-mono tracking-[0.25em] text-candle-500 transition hover:bg-night-700"
-      aria-label="复制房间号"
+      disabled={copied}
+      className={cn(
+        "flex items-center gap-2 rounded-full bg-night-800/60 px-4 py-1.5 text-sm font-mono tracking-[0.25em] text-candle-500 transition",
+        copied ? "cursor-default" : "hover:bg-night-700 cursor-pointer",
+      )}
+      aria-label={copied ? "已复制" : "复制房间号"}
     >
-      <span>{roomId}</span>
-      <Copy className="h-3.5 w-3.5 opacity-60" />
+      <span>{copied ? "已复制" : roomId}</span>
+      {copied ? (
+        <Check className="h-3.5 w-3.5" />
+      ) : (
+        <Copy className="h-3.5 w-3.5 opacity-60" />
+      )}
     </button>
   )
 }

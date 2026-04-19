@@ -177,7 +177,8 @@ function werewolfConfirm(
     })
   })
 
-  return [next, { kind: "rolesRevealed", roles: revealed }]
+  // 互认面板已经把队友 + RoleBadge 展示得很清楚，无需再弹一次翻牌
+  return [next, { kind: "noResult" }]
 }
 
 function loneWerewolfView(

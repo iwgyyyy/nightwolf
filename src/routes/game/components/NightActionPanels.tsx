@@ -242,9 +242,11 @@ function SeerChoicePanel({
     if (mode === "player" && playerPick) {
       void submit({ kind: "seerViewPlayer", playerId: playerPick })
     } else if (mode === "center" && centerPicks.length === 2) {
+      // 按原始位置升序提交，保证引擎 / 展示都固定是 center_? → center_?（左→右）
+      const sorted = [...centerPicks].sort((a, b) => a - b)
       void submit({
         kind: "seerViewCenter",
-        indices: [centerPicks[0], centerPicks[1]] as [number, number],
+        indices: [sorted[0], sorted[1]] as [number, number],
       })
     }
   }

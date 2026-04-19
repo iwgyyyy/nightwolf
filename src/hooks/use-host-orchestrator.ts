@@ -481,9 +481,14 @@ async function enterDayPhase(
   await sync.updatePublicState(roomId, dayBase)
   await getNarrationService().waitIdle()
 
+  // 在 narrate 期间 host 可能已主动点了"结束讨论"进入 voting，
+  // 此时不能再把 phase 覆盖回 day、也不能重挂 dayTimer。
+  const latest = useGameStore.getState().publicState
+  if (!latest || latest.gamePhase !== "day") return
+
   const durationMs = basePublic.settings.discussionTime * 60 * 1000
   const dayWithTimer: PublicRoomState = {
-    ...dayBase,
+    ...latest,
     phaseStartedAt: new Date().toISOString(),
     phaseEndsAt: new Date(Date.now() + durationMs).toISOString(),
   }
@@ -557,19 +562,24 @@ async function handleVoteSubmission(
   await sync.updatePublicState(roomId, newPublic)
 
   // 所有玩家都投过 → 立即 finalize
+  // 直接把最新 hostState 传过去，避免 finalizeVoting 读到还没被 store subscription 更新的旧值
+  // （否则最后一个投票的玩家的票可能丢失，被当成弃票）
   if (submittedIds.length >= ps.players.length) {
     clearVoteTimer()
-    await finalizeVoting(roomId)
+    await finalizeVoting(roomId, newHost)
   }
 }
 
 /** 计票 + 胜负 → 写 ResultData 切 result 阶段 */
-async function finalizeVoting(roomId: string): Promise<void> {
+async function finalizeVoting(
+  roomId: string,
+  overrideHostState?: HostGameState,
+): Promise<void> {
   clearAllPhaseTimers()
   const sync = getSyncService()
   const store = useGameStore.getState()
   const ps = store.publicState
-  const hostState = store.hostState
+  const hostState = overrideHostState ?? store.hostState
   if (!ps || !hostState) return
   if (ps.gamePhase !== "voting") return
 

@@ -1,12 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
-import { AnimatePresence, motion } from "framer-motion"
-import { Moon } from "lucide-react"
 import { Card } from "@/components/game/Card"
 import { CardSwap, type SwapCardData } from "@/components/game/CardSwap"
 import { PlayerTable } from "@/components/game/PlayerTable"
 import { computeSeatPositions } from "@/components/game/seat-positions"
-import { ROLE_META } from "@/types"
-import type { Role } from "@/types"
 import { useGameStore, selectPlayers, selectHostId } from "@/stores/gameStore"
 import { useLocalPlayer } from "@/hooks/use-local-player"
 import { useWindowSize } from "@/hooks/use-window-size"
@@ -27,8 +23,6 @@ function pickDiameter(playerCount: number, isMobile: boolean): number {
 }
 
 interface NightTableProps {
-  /** 当前步骤对应的角色（用于闭眼态显示） */
-  currentStepRole: Role | null
   /** 自己是不是本步骤的 actor */
   isActorThisStep: boolean
 }
@@ -37,13 +31,10 @@ interface NightTableProps {
  * 夜晚沉浸式圆桌：
  *   - 所有玩家围坐，座位下方挂背面卡牌（移动端省略）
  *   - 中央 3 张桌面牌
- *   - 闭眼态：全屏遮罩 + 自己座位漂浮（仅自己亮起）
+ *   - 闭眼态：自己座位漂浮；全屏眼睑幕由 NightCurtain 在外层负责
  *   - 睁眼态：全员亮起，动画通过 nightAnimationBus 触发 CardSwap
  */
-export function NightTable({
-  currentStepRole,
-  isActorThisStep,
-}: NightTableProps) {
+export function NightTable({ isActorThisStep }: NightTableProps) {
   const { playerId } = useLocalPlayer()
   const { width } = useWindowSize()
   const isMobile = width > 0 && width < MOBILE_BREAKPOINT
@@ -114,53 +105,6 @@ export function NightTable({
           height={diameter}
           positions={seatPositions}
         />
-
-        {/* 闭眼遮罩（非 actor 可见；透过 raisedIds 的 z-index 保留自己亮起） */}
-        <AnimatePresence>
-          {!isActorThisStep && (
-            <motion.div
-              key="night-overlay"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.6 }}
-              className="pointer-events-none absolute rounded-full"
-              style={{
-                // 向外扩 60px：覆盖超出圆桌 diameter 的座位（头像+名字会溢出边界）
-                inset: "-60px",
-                zIndex: 20,
-                background:
-                  "radial-gradient(circle at center, oklch(0.05 0.02 265 / 0.9) 0%, oklch(0.02 0 0 / 0.99) 70%, oklch(0.02 0 0 / 1) 100%)",
-              }}
-              aria-hidden
-            />
-          )}
-        </AnimatePresence>
-
-        {/* 闭眼态顶部的"X 请睁眼"小提示 */}
-        <AnimatePresence>
-          {!isActorThisStep && currentStepRole && (
-            <motion.div
-              key="role-hint"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center"
-              style={{ zIndex: 25 }}
-            >
-              <Moon
-                className="mx-auto h-9 w-9 text-candle-500/70 candle-flicker"
-                strokeWidth={0.8}
-              />
-              <p className="mt-2 font-display text-base text-moon-100/70">
-                {ROLE_META[currentStepRole].displayName}行动中
-              </p>
-              <p className="mt-1 text-[0.65rem] uppercase tracking-[0.35em] text-moon-100/40">
-                请闭上眼睛
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     </div>
   )

@@ -18,6 +18,7 @@ export function ShareLinkButton({ roomId, className }: ShareLinkButtonProps) {
   const url = `${window.location.origin}/room/${roomId}`
 
   const handleCopy = async () => {
+    if (copied) return
     const ok = await copyToClipboard(url)
     if (ok) {
       setCopied(true)
@@ -32,8 +33,9 @@ export function ShareLinkButton({ roomId, className }: ShareLinkButtonProps) {
     <Button
       type="button"
       onClick={handleCopy}
+      disabled={copied}
       className={cn(
-        "group gap-2 bg-candle-500 text-ink-900 hover:bg-candle-400",
+        "group gap-2 bg-candle-500 text-ink-900 hover:bg-candle-400 disabled:opacity-100",
         className,
       )}
     >

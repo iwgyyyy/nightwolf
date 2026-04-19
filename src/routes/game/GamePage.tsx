@@ -13,6 +13,9 @@ import {
   selectHostId,
 } from "@/stores/gameStore"
 import { useHasName } from "@/hooks/use-local-player"
+import { PhaseTransition } from "@/components/game/PhaseTransition"
+import { NightCurtainHost } from "@/components/game/NightCurtain"
+import type { GamePhase } from "@/types"
 import DealingScreen from "./components/DealingScreen"
 import NightScreen from "./components/NightScreen"
 import DayScreen from "./components/DayScreen"
@@ -20,8 +23,6 @@ import VotingScreen from "./components/VotingScreen"
 import ResultScreen from "./components/ResultScreen"
 import { PausedOverlay } from "./components/PausedOverlay"
 import { PhasePlaceholder } from "./components/PhasePlaceholder"
-import { PhaseTransition } from "@/components/game/PhaseTransition"
-import type { GamePhase } from "@/types"
 
 export default function GamePage() {
   const { roomId } = useParams<{ roomId: string }>()
@@ -66,8 +67,7 @@ export default function GamePage() {
   if (!privateState && phase !== "waiting") {
     return (
       <PhasePlaceholder
-        phase={phase}
-        title="未参与"
+        title="Observer · 未参与"
         description="你未被分配到本局"
       />
     )
@@ -76,7 +76,12 @@ export default function GamePage() {
   return (
     <>
       <PhaseDispatcher phase={phase} />
-      <PhaseTransition phase={phase} duration={900} />
+      {/* night 阶段由 NightCurtain 接管过场，避免双层动画 */}
+      <PhaseTransition
+        phase={phase === "night" ? null : phase}
+        duration={900}
+      />
+      <NightCurtainHost />
       <AnimatePresence>
         {publicState.isPaused && <PausedOverlay hostName={hostName} />}
       </AnimatePresence>
