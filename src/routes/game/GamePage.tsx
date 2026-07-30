@@ -1,16 +1,12 @@
 import { useEffect } from "react"
 import { useNavigate, useParams } from "react-router"
-import { AnimatePresence } from "framer-motion"
 import { Moon } from "lucide-react"
 import { useGameSync } from "@/hooks/use-game-sync"
-import { useHostOrchestrator } from "@/hooks/use-host-orchestrator"
 import { useWakeLock } from "@/hooks/use-wake-lock"
 import { useNarrationSync } from "@/hooks/use-narration-sync"
 import {
   useGameStore,
   selectGamePhase,
-  selectPlayers,
-  selectHostId,
 } from "@/stores/gameStore"
 import { useHasName } from "@/hooks/use-local-player"
 import { PhaseTransition } from "@/components/game/PhaseTransition"
@@ -21,7 +17,6 @@ import NightScreen from "./components/NightScreen"
 import DayScreen from "./components/DayScreen"
 import VotingScreen from "./components/VotingScreen"
 import ResultScreen from "./components/ResultScreen"
-import { PausedOverlay } from "./components/PausedOverlay"
 import { PhasePlaceholder } from "./components/PhasePlaceholder"
 
 export default function GamePage() {
@@ -30,8 +25,7 @@ export default function GamePage() {
   const hasName = useHasName()
 
   // 桥接 sync → store
-  const { isHost } = useGameSync({ roomId, enabled: hasName })
-  useHostOrchestrator({ roomId, isHost })
+  useGameSync({ roomId, enabled: hasName })
   // 所有玩家都按本地 publicState 变化播报语音
   useNarrationSync()
   // 保持屏幕唤醒，防止手机息屏打断计时/语音
@@ -41,9 +35,6 @@ export default function GamePage() {
   const privateState = useGameStore((s) => s.privateState)
   const phase = useGameStore(selectGamePhase)
   const joinError = useGameStore((s) => s.joinError)
-  const players = useGameStore(selectPlayers)
-  const hostId = useGameStore(selectHostId)
-  const hostName = players.find((p) => p.playerId === hostId)?.name
 
   // waiting 阶段（再来一局）→ 返回大厅
   useEffect(() => {
@@ -82,9 +73,6 @@ export default function GamePage() {
         duration={900}
       />
       <NightCurtainHost />
-      <AnimatePresence>
-        {publicState.isPaused && <PausedOverlay hostName={hostName} />}
-      </AnimatePresence>
     </>
   )
 }

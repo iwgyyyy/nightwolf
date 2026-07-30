@@ -20,7 +20,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field"
-import { verifyAdmin } from "@/config/auth"
+import { getSyncService, SyncError } from "@/sync"
 import { useAuthStore } from "@/stores/authStore"
 import { useIsMobile } from "@/hooks/use-is-mobile"
 
@@ -44,22 +44,31 @@ export function AdminAuthDialog({
   onOpenChange,
   onSuccess,
 }: AdminAuthDialogProps) {
-  const grantAdmin = useAuthStore((s) => s.grantAdmin)
+  const setToken = useAuthStore((s) => s.setToken)
   const isMobile = useIsMobile()
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: DEFAULT_VALUES,
   })
 
-  const onSubmit = (values: FormValues) => {
-    if (verifyAdmin(values.username, values.password)) {
-      grantAdmin()
+  // 凭证交给服务端校验：客户端没有密码副本，也就无从本地比对
+  const onSubmit = async (values: FormValues) => {
+    try {
+      const { token, expiresAt } = await getSyncService().authenticateAdmin(
+        values.username,
+        values.password,
+      )
+      setToken(token, expiresAt)
       toast.success("验证通过")
       form.reset()
       onOpenChange(false)
       onSuccess?.()
-    } else {
-      toast.error("用户名或密码错误")
+    } catch (err) {
+      const message =
+        err instanceof SyncError && err.code === "RATE_LIMITED"
+          ? err.message
+          : "用户名或密码错误"
+      toast.error(message)
       form.setError("password", { message: "凭证错误" })
     }
   }

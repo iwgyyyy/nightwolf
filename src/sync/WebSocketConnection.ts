@@ -4,14 +4,19 @@
  * 事件驱动；不处理业务消息语义（由上层 WebSocketSyncService 解析）。
  */
 
-import { decodeInbound, encodeOutbound, type WSInbound, type WSOutbound } from "./WSMessage"
+import {
+  decodeServer,
+  encodeClient,
+  type ClientMessage,
+  type ServerMessage,
+} from "@/protocol"
 
 type ConnectionState = "idle" | "connecting" | "open" | "closed"
 
 interface Handlers {
   onOpen?: () => void
   onClose?: (reason: "intentional" | "error" | "remote") => void
-  onMessage?: (message: WSInbound) => void
+  onMessage?: (message: ServerMessage) => void
 }
 
 const HEARTBEAT_INTERVAL_MS = 30_000
@@ -55,7 +60,7 @@ export class WebSocketConnection {
     })
 
     this.ws.addEventListener("message", (ev) => {
-      const msg = decodeInbound(typeof ev.data === "string" ? ev.data : String(ev.data))
+      const msg = decodeServer(typeof ev.data === "string" ? ev.data : String(ev.data))
       if (msg) this.handlers.onMessage?.(msg)
     })
 
@@ -87,10 +92,10 @@ export class WebSocketConnection {
     return this.state === "open" && this.ws?.readyState === WebSocket.OPEN
   }
 
-  send(msg: WSOutbound): boolean {
+  send(msg: ClientMessage): boolean {
     if (!this.isOpen || !this.ws) return false
     try {
-      this.ws.send(encodeOutbound(msg))
+      this.ws.send(encodeClient(msg))
       return true
     } catch {
       return false

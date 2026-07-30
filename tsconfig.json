@@ -7,6 +7,10 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
+      "@/engine/*": ["./shared/engine/*"],
+      "@/types": ["./shared/types"],
+      "@/types/*": ["./shared/types/*"],
+      "@/protocol": ["./shared/protocol"],
       "@/*": ["./src/*"]
     }
   }

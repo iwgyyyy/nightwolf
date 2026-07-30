@@ -21,10 +21,22 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
+      "@/engine/*": [
+        "./shared/engine/*"
+      ],
+      "@/types": [
+        "./shared/types"
+      ],
+      "@/types/*": [
+        "./shared/types/*"
+      ],
+      "@/protocol": [
+        "./shared/protocol"
+      ],
       "@/*": [
         "./src/*"
       ]
     }
   },
-  "include": ["src"]
+  "include": ["src", "shared"]
 }

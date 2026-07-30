@@ -14,12 +14,11 @@ interface UseGameSyncOptions {
 }
 
 /**
- * 将 `GameSyncService` 订阅桥接到 `gameStore`。
+ * 将服务端下发的状态桥接到 `gameStore`。
  *
  * 职责：
  *  - 加入房间（upsert 本玩家）
- *  - 订阅 publicState / privateState / hostState（按需）
- *  - 监听 `onActionReceived`，写入 store.pendingHostAction，由编排层消费
+ *  - 订阅 publicState（广播）与自己的 privateState（单播）
  *  - 监听 `onRoomDeleted`，toast + 跳首页
  *  - 维护 connectionStatus、joinError
  *  - 卸载时 cleanup
@@ -51,22 +50,9 @@ export function useGameSync({ roomId, enabled = true }: UseGameSyncOptions) {
       useGameStore.getState().setConnectionStatus("connected")
     })
 
-    // 订阅本玩家私有状态
-    const unsubPrivate = sync.onPrivateStateChanged(roomId, playerId, (state) => {
+    // 订阅本玩家私有状态（服务端单播，收到的必然是自己那份）
+    const unsubPrivate = sync.onPrivateStateChanged((state) => {
       useGameStore.getState().setPrivateState(state)
-    })
-
-    // Host 订阅 hostState 和 actions（先全员订阅，Host 判断在接收端做）
-    const unsubHost = sync.onHostStateChanged(roomId, (state) => {
-      useGameStore.getState().setHostState(state)
-    })
-
-    const unsubAction = sync.onActionReceived(roomId, (pid, action) => {
-      // 只有 Host 消费 actions
-      const { publicState: ps, currentRoomId } = useGameStore.getState()
-      if (!ps || currentRoomId !== roomId) return
-      if (ps.hostId !== playerId) return
-      useGameStore.getState().setPendingHostAction({ playerId: pid, action })
     })
 
     // 房间解散
@@ -107,8 +93,6 @@ export function useGameSync({ roomId, enabled = true }: UseGameSyncOptions) {
     return () => {
       unsubPublic()
       unsubPrivate()
-      unsubHost()
-      unsubAction()
       unsubDelete()
       unsubConn()
     }

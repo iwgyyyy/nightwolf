@@ -1,0 +1,36 @@
+# 放在服务器 /etc/caddy/Caddyfile。
+#
+# Caddy 会自动申请并续期 Let's Encrypt 证书，前提是域名已解析到本机
+# 且 80/443 可从公网访问（国内服务器需要域名已备案）。
+#
+# 前后端同域：前端静态资源走 /，WebSocket 走 /api，没有跨域问题。
+
+jc.infist.cn {
+	encode zstd gzip
+
+	# WebSocket 后端。Caddy 的 reverse_proxy 自动识别并转发 Upgrade 握手，
+	# 不需要像 nginx 那样手写 Connection/Upgrade 头。
+	handle_path /api* {
+		reverse_proxy 127.0.0.1:9000 {
+			# 长连接不要被代理层掐断（服务端 30s 心跳，这里给足余量）
+			transport http {
+				read_timeout 1h
+				write_timeout 1h
+			}
+		}
+	}
+
+	# 前端静态资源。React Router 需要 SPA fallback。
+	handle {
+		root * /srv/nightwolf/dist
+		try_files {path} /index.html
+		file_server
+	}
+
+	log {
+		output file /var/log/caddy/nightwolf.log {
+			roll_size 10m
+			roll_keep 5
+		}
+	}
+}

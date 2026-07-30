@@ -69,7 +69,6 @@ function useSubmitAction(): {
   submit: (submission: NightActionSubmission) => Promise<void>
   submitting: boolean
 } {
-  const { playerId } = useLocalPlayer()
   const roomId = useGameStore((s) => s.publicState?.roomId)
   const [submitting, setSubmitting] = useState(false)
 
@@ -77,7 +76,7 @@ function useSubmitAction(): {
     if (!roomId || submitting) return
     setSubmitting(true)
     try {
-      await getSyncService().submitAction(roomId, playerId, {
+      await getSyncService().submitAction(roomId, {
         kind: "nightAction",
         submission,
       })

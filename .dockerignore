@@ -1,0 +1,29 @@
+# 后端镜像只需要 shared/ 和 server/。
+# 没有这个文件的话，438 个前端依赖会被一起塞进构建上下文。
+
+node_modules
+**/node_modules
+dist
+.git
+.github
+.worktree
+
+# 前端源码与资源，后端用不到
+src
+public
+index.html
+vite.config.ts
+vitest.config.ts
+tsconfig.app.json
+tsconfig.node.json
+components.json
+eslint.config.js
+
+docs
+deploy
+*.md
+
+# 凭证绝不进镜像（运行时由环境变量注入）
+.env
+.env.*
+!.env.example

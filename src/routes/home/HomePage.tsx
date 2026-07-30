@@ -11,11 +11,10 @@ import { JoinRoomDialog } from "@/components/JoinRoomDialog"
 import { StarField } from "@/components/StarField"
 import { VillageSilhouette } from "@/components/icons/VillageSilhouette"
 import { PlayerAvatar } from "@/components/game/PlayerAvatar"
-import { useAuthStore } from "@/stores/authStore"
+import { selectIsAdmin, useAuthStore } from "@/stores/authStore"
 import { useHasName, useLocalPlayer } from "@/hooks/use-local-player"
 import { getSyncService } from "@/sync"
 import { getNarrationService } from "@/services/NarrationService"
-import { ADMIN_CREDENTIALS } from "@/config/auth"
 import { DEFAULT_ROOM_SETTINGS } from "@/config/defaults"
 
 const TITLE_CHARS = ["一", "夜", "狼", "人", "杀"]
@@ -24,8 +23,8 @@ type PendingAction = "create" | "join" | null
 
 export default function HomePage() {
   const navigate = useNavigate()
-  const isAdmin = useAuthStore((s) => s.isAdmin)
-  const revokeAdmin = useAuthStore((s) => s.revokeAdmin)
+  const isAdmin = useAuthStore(selectIsAdmin)
+  const revokeAdmin = useAuthStore((s) => s.clearToken)
   const hasName = useHasName()
   const { playerId, name } = useLocalPlayer()
 
@@ -35,13 +34,16 @@ export default function HomePage() {
   const [pending, setPending] = useState<PendingAction>(null)
 
   const createRoom = async () => {
+    const token = useAuthStore.getState().token
+    if (!token) {
+      toast.error("管理员凭证已过期，请重新验证")
+      setPending("create")
+      setAuthOpen(true)
+      return
+    }
     try {
       const sync = getSyncService()
-      const roomId = await sync.createRoom(
-        playerId,
-        DEFAULT_ROOM_SETTINGS,
-        ADMIN_CREDENTIALS,
-      )
+      const roomId = await sync.createRoom(token, playerId, DEFAULT_ROOM_SETTINGS)
       navigate(`/room/${roomId}`)
     } catch (err) {
       toast.error((err as Error).message || "创建房间失败")

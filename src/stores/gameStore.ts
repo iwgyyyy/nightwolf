@@ -1,8 +1,6 @@
 import { create } from "zustand"
 import { immer } from "zustand/middleware/immer"
 import type {
-  HostGameState,
-  PlayerAction,
   PlayerPublicInfo,
   PrivatePlayerState,
   PublicRoomState,
@@ -31,12 +29,8 @@ interface GameState {
   joinError: LobbyError | null
   /** 公共房间状态 */
   publicState: PublicRoomState | null
-  /** 本玩家的私有状态 */
+  /** 本玩家的私有状态（服务端单播，只含自己那份） */
   privateState: PrivatePlayerState | null
-  /** Host 权威状态（仅 Host 持有） */
-  hostState: HostGameState | null
-  /** Host 收到的最近一条 player action（处理后置空，主要用于编排触发） */
-  pendingHostAction: { playerId: string; action: PlayerAction } | null
 }
 
 interface GameActions {
@@ -45,10 +39,6 @@ interface GameActions {
   setJoinError: (err: LobbyError | null) => void
   setPublicState: (state: PublicRoomState) => void
   setPrivateState: (state: PrivatePlayerState) => void
-  setHostState: (state: HostGameState) => void
-  setPendingHostAction: (
-    payload: { playerId: string; action: PlayerAction } | null,
-  ) => void
   /** 重置所有房间相关状态（离开房间 / 被解散 / 再来一局） */
   resetRoom: () => void
 }
@@ -59,8 +49,6 @@ const INITIAL_STATE: GameState = {
   joinError: null,
   publicState: null,
   privateState: null,
-  hostState: null,
-  pendingHostAction: null,
 }
 
 export const useGameStore = create<GameState & GameActions>()(
@@ -90,16 +78,6 @@ export const useGameStore = create<GameState & GameActions>()(
     setPrivateState: (state) =>
       set((s) => {
         s.privateState = state
-      }),
-
-    setHostState: (state) =>
-      set((s) => {
-        s.hostState = state
-      }),
-
-    setPendingHostAction: (payload) =>
-      set((s) => {
-        s.pendingHostAction = payload
       }),
 
     resetRoom: () =>

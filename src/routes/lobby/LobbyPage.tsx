@@ -34,10 +34,6 @@ import { getSyncService } from "@/sync"
 import { getNarrationService } from "@/services/NarrationService"
 import { useHasName } from "@/hooks/use-local-player"
 import { useGameSync } from "@/hooks/use-game-sync"
-import {
-  useHostOrchestrator,
-  hostStartGame,
-} from "@/hooks/use-host-orchestrator"
 import { useGameStore, selectPlayers } from "@/stores/gameStore"
 import { MAX_PLAYERS_PER_ROOM } from "@/config/defaults"
 import { validateLobbyStart } from "@/engine/orchestrator"
@@ -54,9 +50,6 @@ export default function LobbyPage() {
 
   // 桥接 sync → store
   const { playerId, isHost } = useGameSync({ roomId, enabled: hasName })
-
-  // Host 编排：监听 pendingHostAction 并处理
-  useHostOrchestrator({ roomId, isHost })
 
   // 从 store 读取
   const publicState = useGameStore((s) => s.publicState)
@@ -91,37 +84,34 @@ export default function LobbyPage() {
     }
   }
 
-  const handleLeave = async () => {
+  const handleLeave = () => {
     if (!roomId) return
     const sync = getSyncService()
     if (isHost) {
-      await sync.deleteRoom(roomId)
+      sync.sendHostCommand(roomId, { kind: "deleteRoom" })
       toast("房间已解散")
     } else {
-      await sync.leaveRoom(roomId, playerId)
+      sync.leaveRoom(roomId)
     }
     navigate("/")
   }
 
-  const handleSettingsChange = async (patch: Partial<RoomSettings>) => {
-    if (!roomId || !publicState) return
-    const sync = getSyncService()
-    await sync.updatePublicState(roomId, {
-      ...publicState,
-      settings: { ...publicState.settings, ...patch },
-    })
+  const handleSettingsChange = (patch: Partial<RoomSettings>) => {
+    if (!roomId) return
+    // 设置由服务端落地并广播，本地不再自行拼装状态
+    getSyncService().sendHostCommand(roomId, { kind: "updateSettings", patch })
   }
 
   const handleRolesChange = (roles: Role[]) => {
     void handleSettingsChange({ roles })
   }
 
-  const handleStartGame = async () => {
+  const handleStartGame = () => {
     if (!roomId) return
     // 在用户手势内再次 prime —— 距 HomePage 首次 prime 已过了配角色/等待阶段，
     // iOS Safari 可能需要重新解锁 speechSynthesis
     getNarrationService().prime()
-    await hostStartGame(roomId)
+    getSyncService().sendHostCommand(roomId, { kind: "startGame" })
   }
 
   return (

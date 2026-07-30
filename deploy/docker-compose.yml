@@ -1,0 +1,27 @@
+# 服务器上的部署编排。放在 /srv/nightwolf/docker-compose.yml。
+#
+# 单实例约束：房间状态在内存里，不能扩副本、不能滚动更新。
+# 重启会中断所有进行中的对局 —— 部署前可以查 /health 的 activeRooms。
+
+services:
+  server:
+    image: ${IMAGE:-nightwolf-server:latest}
+    container_name: nightwolf-server
+    restart: unless-stopped
+
+    # 让容器里有个真正的 init 进程转发信号。
+    # 否则应用是 PID 1，docker stop 要干等 10 秒才 SIGKILL。
+    init: true
+
+    # 只绑回环 —— 公网流量一律走 Caddy，容器本身不暴露
+    ports:
+      - "127.0.0.1:9000:9000"
+
+    env_file:
+      - .env
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

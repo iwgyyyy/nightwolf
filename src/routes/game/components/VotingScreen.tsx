@@ -68,7 +68,7 @@ export default function VotingScreen() {
     if (hasSubmitted || submitting || !choice) return
     setSubmitting(true)
     try {
-      await getSyncService().submitAction(publicState.roomId, playerId, {
+      await getSyncService().submitAction(publicState.roomId, {
         kind: "vote",
         targetId: choice.kind === "target" ? choice.targetId : null,
       })

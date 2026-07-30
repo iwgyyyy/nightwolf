@@ -8,66 +8,80 @@ import {
   closeEyesTextFor,
 } from "@/engine/narrationText"
 import { getNarrationService } from "@/services/NarrationService"
+import { getSyncService } from "@/sync"
+import type { PublicRoomState } from "@/types"
 
 /**
- * 所有客户端（Host 与非 Host）都挂载：监听 publicState 的 phase/step 变化，
- * 本地播报语音。每个设备独立运行 `speechSynthesis`，让所有玩家同步听到
- *   - "天黑请闭眼 → {角色}请睁眼"（进入夜晚）
- *   - "{上一角色}请闭眼 → {下一角色}请睁眼"（夜晚步骤切换）
- *   - "天亮了"（进入白天）
+ * 所有客户端都挂载：按 publicState 的阶段变化本地播报语音，播完回 ack。
  *
- * Host 端 orchestrator 改用固定延迟（NARRATE_DURATION_MS）在 publicState 切换
- * 步骤后等 narrate 播完再开倒计时，保证全设备节奏一致。
+ * 播报内容完全由公开状态推导（角色配置本来就是大厅里公开选的），
+ * 所以服务端不需要下发文案，只需要下发一个 narrationCueId 用于对齐。
+ *
+ * 重要：**无论这一轮是否真的需要出声，都必须 ack**。服务端在等齐所有在线
+ * 玩家的回执后才会开始倒计时，漏 ack 会让整局卡到 8 秒超时才继续。
  */
 export function useNarrationSync(): void {
-  const lastKey = useRef<string | null>(null)
+  const lastCueId = useRef<string | null>(null)
 
   useEffect(() => {
     const narrate = getNarrationService()
 
     const unsub = useGameStore.subscribe((state, prev) => {
       const ps = state.publicState
-      const prevPs = prev.publicState
       if (!ps) return
 
-      const key = `${ps.gamePhase}:${ps.currentNightStep ?? "-"}`
-      const prevKey = lastKey.current
-      if (prevKey === key) return
-      lastKey.current = key
+      const cueId = ps.narrationCueId
+      if (!cueId || cueId === lastCueId.current) return
+      lastCueId.current = cueId
 
-      // 首次挂载（刷新/重连）时不播，避免把历史阶段再念一次
-      if (prevKey === null || !prevPs) return
+      const texts = buildNarrationTexts(prev.publicState, ps)
 
-      const steps = buildNightSteps(ps.settings.roles)
-      const texts: string[] = []
-
-      if (prevPs.gamePhase !== "night" && ps.gamePhase === "night") {
-        // dealing → night
-        texts.push(NIGHT_START_TEXT)
-        const first = steps[ps.currentNightStep ?? 0]
-        if (first) texts.push(openEyesTextFor(first))
-      } else if (
-        prevPs.gamePhase === "night" &&
-        ps.gamePhase === "night" &&
-        prevPs.currentNightStep !== ps.currentNightStep
-      ) {
-        // 夜晚步骤切换
-        const prevRole = steps[prevPs.currentNightStep ?? 0]
-        const nextRole = steps[ps.currentNightStep ?? 0]
-        if (prevRole) texts.push(closeEyesTextFor(prevRole))
-        if (nextRole) texts.push(openEyesTextFor(nextRole))
-      } else if (prevPs.gamePhase === "night" && ps.gamePhase === "day") {
-        // night → day
-        texts.push(DAY_START_TEXT)
-      }
-
-      if (texts.length === 0) return
       void (async () => {
-        for (const text of texts) {
-          await narrate.speak(text)
+        try {
+          for (const text of texts) {
+            await narrate.speak(text)
+          }
+        } finally {
+          // 播报失败（比如浏览器拦截自动播放）也要放行，不能把房间卡住
+          getSyncService().ackNarration(ps.roomId, cueId)
         }
       })()
     })
     return unsub
   }, [])
+}
+
+/**
+ * 推导本次需要念的文案。刷新 / 重连后首次收到状态时返回空数组
+ * （避免把历史阶段重念一遍），此时上层会立即 ack。
+ */
+function buildNarrationTexts(
+  prevPs: PublicRoomState | null,
+  ps: PublicRoomState,
+): string[] {
+  if (!prevPs) return []
+
+  const steps = buildNightSteps(ps.settings.roles)
+  const texts: string[] = []
+
+  if (prevPs.gamePhase !== "night" && ps.gamePhase === "night") {
+    // 进入夜晚
+    texts.push(NIGHT_START_TEXT)
+    const first = steps[ps.currentNightStep ?? 0]
+    if (first) texts.push(openEyesTextFor(first))
+  } else if (
+    prevPs.gamePhase === "night" &&
+    ps.gamePhase === "night" &&
+    prevPs.currentNightStep !== ps.currentNightStep
+  ) {
+    // 夜晚步骤切换
+    const prevRole = steps[prevPs.currentNightStep ?? 0]
+    const nextRole = steps[ps.currentNightStep ?? 0]
+    if (prevRole) texts.push(closeEyesTextFor(prevRole))
+    if (nextRole) texts.push(openEyesTextFor(nextRole))
+  } else if (prevPs.gamePhase === "night" && ps.gamePhase === "day") {
+    texts.push(DAY_START_TEXT)
+  }
+
+  return texts
 }

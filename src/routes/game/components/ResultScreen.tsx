@@ -27,7 +27,7 @@ import {
   selectHostId,
 } from "@/stores/gameStore"
 import { useLocalPlayer } from "@/hooks/use-local-player"
-import { hostPlayAgain } from "@/hooks/use-host-orchestrator"
+import { getSyncService } from "@/sync"
 import { cn } from "@/lib/utils"
 
 const WIN_META: Record<
@@ -98,7 +98,7 @@ export default function ResultScreen() {
     if (resetting) return
     setResetting(true)
     try {
-      await hostPlayAgain(publicState.roomId)
+      getSyncService().sendHostCommand(publicState.roomId, { kind: "playAgain" })
     } catch {
       toast.error("重置失败")
       setResetting(false)

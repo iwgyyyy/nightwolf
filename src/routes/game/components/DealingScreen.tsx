@@ -65,7 +65,7 @@ export default function DealingScreen() {
     getNarrationService().prime()
     setSubmitting(true)
     try {
-      await getSyncService().submitAction(roomId, playerId, {
+      await getSyncService().submitAction(roomId, {
         kind: "confirmIdentity",
       })
     } catch {

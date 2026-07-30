@@ -1,0 +1,118 @@
+name: 构建并部署
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 同时只跑一个部署，避免两次 push 撞车
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: nightwolf-server
+
+jobs:
+  test:
+    name: 测试与类型检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: 安装前端依赖
+        run: bun install --frozen-lockfile
+
+      - name: 单元测试
+        run: bun run test:run
+
+      - name: 前端类型检查
+        run: bunx tsc -b --force
+
+      - name: 安装后端依赖
+        working-directory: server
+        run: bun install --frozen-lockfile
+
+      - name: 后端类型检查
+        working-directory: server
+        run: bun run typecheck
+
+  deploy:
+    name: 构建镜像并部署
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # ---------- 后端镜像 → 阿里云 ACR ----------
+      # 用 ACR 而不是 ghcr.io：国内服务器拉 ghcr 很慢甚至不通
+      - name: 登录阿里云 ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: 构建并推送镜像
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: server/Dockerfile
+          push: true
+          # 服务器是 x86；若买的是 ARM 实例改成 linux/arm64
+          platforms: linux/amd64
+          tags: |
+            ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.IMAGE_NAME }}:latest
+            ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ---------- 前端静态资源 ----------
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: 安装依赖
+        run: bun install --frozen-lockfile
+
+      - name: 构建前端
+        env:
+          # 与后端同域，走 Caddy 的 /api 反代
+          VITE_WS_URL: ${{ secrets.VITE_WS_URL }}
+        run: bun run build
+
+      - name: 确认构建产物不含明文凭证
+        run: |
+          if grep -rqE "ADMIN_PASSWORD|VITE_ADMIN" dist/; then
+            echo "::error::构建产物里出现了管理员凭证，中止部署"
+            exit 1
+          fi
+          echo "✅ 构建产物干净"
+
+      # ---------- 分发 ----------
+      - name: 配置 SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: 上传前端产物
+        run: |
+          rsync -az --delete -e "ssh -i ~/.ssh/id_ed25519" \
+            dist/ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/srv/nightwolf/dist/"
+
+      # 不传镜像 tag：服务器 /srv/nightwolf/.env 里固定写 IMAGE=...:latest。
+      # 这样 authorized_keys 才能用 command="/srv/nightwolf/deploy.sh" 锁死这把密钥
+      # （command= 会忽略客户端传来的命令和环境变量）。
+      # 回滚就手动把 .env 里的 tag 改成某个 sha 再跑一次。
+      - name: 触发服务器部署
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "/srv/nightwolf/deploy.sh"

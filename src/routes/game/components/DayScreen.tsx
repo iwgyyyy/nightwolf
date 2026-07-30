@@ -23,7 +23,7 @@ import {
   selectHostId,
 } from "@/stores/gameStore"
 import { useLocalPlayer } from "@/hooks/use-local-player"
-import { hostEndDay } from "@/hooks/use-host-orchestrator"
+import { getSyncService } from "@/sync"
 
 const MOBILE_BREAKPOINT = 640
 const DESKTOP_DIAMETER = 420
@@ -54,7 +54,7 @@ export default function DayScreen() {
     if (ending) return
     setEnding(true)
     try {
-      await hostEndDay(publicState.roomId)
+      getSyncService().sendHostCommand(publicState.roomId, { kind: "endDay" })
     } catch {
       toast.error("结束失败，请重试")
       setEnding(false)
