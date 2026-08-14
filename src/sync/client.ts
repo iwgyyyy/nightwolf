@@ -239,8 +239,14 @@ export class NightwolfClient {
 
   async joinRoom(roomId: string, player: PlayerPublicInfo): Promise<void> {
     this.lastJoin = { roomId, player }
-    const wasOpen = this.connection.isOpen
     await this.waitUntilOpen()
+
+    // 重复调用（如 StrictMode 双挂载）时静默作废上一次的等待：
+    // 若不清掉旧 timer，它会在 10s 后误报"加入超时"
+    if (this.pendingJoin) {
+      clearTimeout(this.pendingJoin.timer)
+      this.pendingJoin = null
+    }
 
     return await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -249,9 +255,17 @@ export class NightwolfClient {
       }, REQUEST_TIMEOUT_MS)
       this.pendingJoin = { resolve, reject, timer }
 
-      // 若连接此前未 open，handleOpen 已经自动发过 join_room
-      if (wasOpen) {
-        this.connection.send({ type: "join_room", data: { roomId, player } })
+      // 一律注册在前、自己发送在后：首次连接时 handleOpen 会代发 join_room，
+      // 本地环回下服务端的 public_state 可能在 pendingJoin 注册之前就到达并被
+      // 错过，导致 10s 误报超时。重复 join 服务端幂等（每次都会回 public_state）。
+      const ok = this.connection.send({
+        type: "join_room",
+        data: { roomId, player },
+      })
+      if (!ok) {
+        clearTimeout(timer)
+        this.pendingJoin = null
+        reject(new SyncError("WebSocket 未连接", "DISCONNECTED"))
       }
     })
   }

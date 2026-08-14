@@ -81,16 +81,20 @@ export function useGameSync({ roomId, enabled = true }: UseGameSyncOptions) {
       else store.setConnectionStatus("connecting")
     })
 
-    // 发起加入
+    // 发起加入。cancelled 防止本 effect 已被清理后（StrictMode 双挂载、
+    // 路由切换）迟到的失败还去写 joinError
+    let cancelled = false
     sync
       .joinRoom(roomId, { playerId, name, isConnected: true })
       .catch((err: unknown) => {
+        if (cancelled) return
         const reason: LobbyError = mapJoinError(err)
         useGameStore.getState().setJoinError(reason)
         useGameStore.getState().setConnectionStatus("error")
       })
 
     return () => {
+      cancelled = true
       unsubPublic()
       unsubPrivate()
       unsubDelete()
