@@ -102,7 +102,7 @@ export function RoleSelector({
       </CollapsibleTrigger>
 
       <CollapsibleContent className="data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0">
-        <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-2">
           {ORDERED_ROLES.map((role) => {
           const meta = ROLE_META[role]
           const count = counts[role] ?? 0
