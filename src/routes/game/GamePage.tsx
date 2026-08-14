@@ -14,13 +14,14 @@ import { NightCurtainHost } from "@/components/game/NightCurtain"
 import { GameScene } from "@/scene/GameScene"
 import { DealingScene } from "@/scene/DealingScene"
 import { NightScene, NightTableLight } from "@/scene/NightScene"
+import { TableCards, DaylightAmbience } from "@/scene/TableCards"
+import { VotingScene } from "@/scene/VotingScene"
 import { LeaveRoomButton } from "@/components/LeaveRoomButton"
-import type { GamePhase } from "@/types"
-import DayScreen from "./components/DayScreen"
-import VotingScreen from "./components/VotingScreen"
 import ResultScreen from "./components/ResultScreen"
 import { DealingHud } from "./components/DealingHud"
 import { NightHud } from "./components/NightHud"
+import { DayHud } from "./components/DayHud"
+import { VotingHud } from "./components/VotingHud"
 import { PhasePlaceholder } from "./components/PhasePlaceholder"
 
 export default function GamePage() {
@@ -68,9 +69,6 @@ export default function GamePage() {
     )
   }
 
-  // 3D 化推进中：dealing / night 已入桌；其余阶段仍是旧 2D 屏，盖在场景上层
-  const sceneDriven = phase === "dealing" || phase === "night"
-
   return (
     <main className="fixed inset-0 overflow-hidden">
       <GameScene
@@ -78,7 +76,9 @@ export default function GamePage() {
         selfId={playerId}
         hostId={publicState.hostId}
         confirmedIds={
-          phase === "dealing" ? publicState.submittedPlayerIds : undefined
+          phase === "dealing" || phase === "voting"
+            ? publicState.submittedPlayerIds
+            : undefined
         }
       >
         {phase === "dealing" && <DealingScene />}
@@ -88,13 +88,19 @@ export default function GamePage() {
             <NightTableLight />
           </>
         )}
+        {(phase === "day" || phase === "voting") && <DaylightAmbience />}
+        {phase === "day" && <TableCards />}
+        {phase === "voting" && <VotingScene />}
       </GameScene>
 
       {phase === "dealing" && <DealingHud />}
       {phase === "night" && <NightHud />}
-      {!sceneDriven && (
+      {phase === "day" && <DayHud />}
+      {phase === "voting" && <VotingHud />}
+      {/* 结算仍是 2D 屏（M5 复盘动画后入桌） */}
+      {phase === "result" && (
         <div className="absolute inset-0 overflow-y-auto bg-night-900">
-          <PhaseDispatcher phase={phase} />
+          <ResultScreen />
         </div>
       )}
 
@@ -116,21 +122,6 @@ export default function GamePage() {
       <NightCurtainHost />
     </main>
   )
-}
-
-function PhaseDispatcher({ phase }: { phase: GamePhase }) {
-  switch (phase) {
-    case "day":
-      return <DayScreen />
-    case "voting":
-      return <VotingScreen />
-    case "result":
-      return <ResultScreen />
-    case "dealing":
-    case "night":
-    case "waiting":
-      return <LoadingScreen />
-  }
 }
 
 function LoadingScreen() {

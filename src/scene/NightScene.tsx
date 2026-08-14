@@ -535,10 +535,11 @@ export function NightScene() {
         if (!card) return null
         return (
           <Html
+            // 水平方向向桌心收，避免边缘座位的气泡超出竖屏画幅
             position={[
-              card.position[0],
+              card.position[0] * 0.72,
               card.position[1] + 0.5,
-              card.position[2],
+              card.position[2] * 0.72,
             ]}
             center
             zIndexRange={[35, 0]}
