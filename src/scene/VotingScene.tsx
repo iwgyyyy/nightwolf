@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react"
 import { Html } from "@react-three/drei"
+import { Check } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { getSyncService } from "@/sync"
@@ -58,6 +59,12 @@ export function VotingScene() {
       ? placements.find((p) => p.player.playerId === selected)
       : null
 
+  // 已提交且投了人：目标牌上方挂"你投给了他"标记
+  const votedCard =
+    submitted && selected
+      ? placements.find((p) => p.player.playerId === selected)
+      : null
+
   return (
     <>
       <TableCards
@@ -102,6 +109,25 @@ export function VotingScene() {
               className="absolute top-full left-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-r border-b border-candle-500/50 bg-night-900/90"
             />
           </div>
+        </Html>
+      )}
+
+      {/* 已投票标记：钉在目标牌上方（目标牌本身保持发光） */}
+      {votedCard && (
+        <Html
+          position={[
+            votedCard.cardPosition[0] * 0.72,
+            votedCard.cardPosition[1] + 0.5,
+            votedCard.cardPosition[2] * 0.72,
+          ]}
+          center
+          zIndexRange={[30, 0]}
+          style={{ pointerEvents: "none" }}
+        >
+          <span className="flex items-center gap-1 rounded-full border border-sage-500/40 bg-sage-500/15 px-2.5 py-1 font-display text-xs whitespace-nowrap text-sage-500 backdrop-blur-sm">
+            <Check className="h-3.5 w-3.5" strokeWidth={2} />
+            你投给了 {votedCard.player.name}
+          </span>
         </Html>
       )}
     </>

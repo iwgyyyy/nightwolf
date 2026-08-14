@@ -15,6 +15,12 @@ export interface GameSceneProps {
   hostId?: string | null
   /** 本阶段已提交的玩家，座位名牌显示对勾 */
   confirmedIds?: string[]
+  /** 烛火是否点燃（白天熄灭，默认点燃） */
+  candleLit?: boolean
+  /** 淡出所有头顶名牌（看牌/翻牌时让位给牌） */
+  hideNameTags?: boolean
+  /** 结算：被投出局的玩家，桌面名签带红色"出局"标记 */
+  eliminatedIds?: string[]
   /** 阶段相关的场景内容（牌、手等）由各阶段插入 */
   children?: ReactNode
 }
@@ -28,6 +34,9 @@ export function GameScene({
   selfId,
   hostId,
   confirmedIds,
+  candleLit = true,
+  hideNameTags,
+  eliminatedIds,
   children,
 }: GameSceneProps) {
   const placements = useMemo(
@@ -46,7 +55,7 @@ export function GameScene({
         <NightEnvironment />
         <CameraRig />
         <Table />
-        <Candle />
+        <Candle lit={candleLit} />
         {placements
           .filter((p) => !p.isSelf)
           .map((p) => (
@@ -58,6 +67,8 @@ export function GameScene({
               dimmed={!p.player.isConnected}
               quit={p.player.hasQuit}
               confirmed={confirmedIds?.includes(p.player.playerId)}
+              hideTag={hideNameTags}
+              eliminated={eliminatedIds?.includes(p.player.playerId)}
             />
           ))}
         {children}

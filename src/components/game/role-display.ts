@@ -3,7 +3,7 @@ import type { Role } from "@/types"
 /** 每个角色的代表汉字（单字），用于卡面主视觉 */
 export const ROLE_GLYPH: Record<Role, string> = {
   werewolf: "狼",
-  minion: "仆",
+  minion: "爪",
   seer: "卜",
   robber: "盗",
   troublemaker: "捣",

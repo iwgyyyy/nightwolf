@@ -18,6 +18,13 @@ const TEAM_COLOR: Record<Team, string> = {
   independent: "#c2913f",
 }
 
+/** 牌面底色：羊皮纸基调上按阵营淡淡着色（狼红 / 村绿 / 独立黄） */
+const TEAM_BG: Record<Team, string> = {
+  werewolf: "#f2dcd2",
+  villager: "#e5ecd6",
+  independent: "#f4e9c4",
+}
+
 const FONT_STACK = `"LXGW WenKai Screen", "Source Han Serif SC", serif`
 
 function makeCanvas(
@@ -90,7 +97,7 @@ function drawFront(ctx: CanvasRenderingContext2D, role: Role) {
 
   ctx.clearRect(0, 0, W, H)
   roundedCardPath(ctx)
-  ctx.fillStyle = "#f0e7d0"
+  ctx.fillStyle = TEAM_BG[meta.team]
   ctx.fill()
   ctx.save()
   roundedCardPath(ctx)
@@ -193,20 +200,65 @@ export function cardFrontTexture(role: Role): CanvasTexture {
 const NAME_W = 512
 const NAME_H = 128
 
-function drawName(ctx: CanvasRenderingContext2D, name: string) {
+function drawName(
+  ctx: CanvasRenderingContext2D,
+  name: string,
+  eliminated: boolean,
+) {
   ctx.clearRect(0, 0, NAME_W, NAME_H)
   // 微弱暗底提升可读性；刻意不做卡片状，避免与身份牌混淆
   ctx.beginPath()
-  ctx.roundRect(96, 22, NAME_W - 192, NAME_H - 44, 42)
+  ctx.roundRect(72, 18, NAME_W - 144, NAME_H - 36, 46)
   ctx.fillStyle = "rgba(8,10,22,0.42)"
   ctx.fill()
-  ctx.font = `bold 56px ${FONT_STACK}`
-  ctx.textAlign = "center"
+  ctx.font = `bold 64px ${FONT_STACK}`
   ctx.textBaseline = "middle"
+  const y = NAME_H / 2 + 2
+  if (!eliminated) {
+    ctx.textAlign = "center"
+    ctx.fillStyle = "rgba(243,244,250,0.92)"
+    ctx.fillText(name, NAME_W / 2, y, NAME_W - 180)
+    return
+  }
+  // 出局：名字后追加红色标记，整体居中
+  const suffix = " 出局"
+  ctx.textAlign = "left"
+  const nameW = Math.min(ctx.measureText(name).width, 240)
+  const suffixW = ctx.measureText(suffix).width
+  let x = (NAME_W - nameW - suffixW) / 2
   ctx.fillStyle = "rgba(243,244,250,0.92)"
-  ctx.fillText(name, NAME_W / 2, NAME_H / 2 + 2, NAME_W - 220)
+  ctx.fillText(name, x, y, 240)
+  x += nameW
+  ctx.fillStyle = "rgba(224,92,76,0.95)"
+  ctx.fillText(suffix, x, y)
 }
 
-export function nameTexture(name: string): CanvasTexture {
-  return getOrCreate(`name:${name}`, (ctx) => drawName(ctx, name), NAME_W, NAME_H)
+export function nameTexture(name: string, eliminated = false): CanvasTexture {
+  return getOrCreate(
+    `name:${eliminated ? "elim:" : ""}${name}`,
+    (ctx) => drawName(ctx, name, eliminated),
+    NAME_W,
+    NAME_H,
+  )
+}
+
+/** 结算：自己出局时放在自己牌下方的提示（整句红字） */
+export function selfEliminatedTexture(): CanvasTexture {
+  return getOrCreate(
+    "self-eliminated",
+    (ctx) => {
+      ctx.clearRect(0, 0, NAME_W, NAME_H)
+      ctx.beginPath()
+      ctx.roundRect(72, 18, NAME_W - 144, NAME_H - 36, 46)
+      ctx.fillStyle = "rgba(8,10,22,0.42)"
+      ctx.fill()
+      ctx.font = `bold 64px ${FONT_STACK}`
+      ctx.textAlign = "center"
+      ctx.textBaseline = "middle"
+      ctx.fillStyle = "rgba(224,92,76,0.95)"
+      ctx.fillText("你出局了", NAME_W / 2, NAME_H / 2 + 2)
+    },
+    NAME_W,
+    NAME_H,
+  )
 }

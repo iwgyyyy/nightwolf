@@ -19,6 +19,10 @@ interface SeatFigureProps {
   quit?: boolean
   /** 本阶段已提交（发牌确认/夜晚行动等），名牌显示对勾 */
   confirmed?: boolean
+  /** 淡出头顶 DOM 名牌（看牌/翻牌时它会盖在牌上层；桌面名签仍在） */
+  hideTag?: boolean
+  /** 结算：被投出局，桌面名签名字后加红色"出局" */
+  eliminated?: boolean
 }
 
 /**
@@ -32,6 +36,8 @@ export function SeatFigure({
   dimmed,
   quit,
   confirmed,
+  hideTag,
+  eliminated,
 }: SeatFigureProps) {
   const body = useRef<Group>(null)
   // 呼吸相位由名字决定，同一玩家在所有客户端上节奏一致
@@ -79,11 +85,11 @@ export function SeatFigure({
           全阶段常显；billboard 面向相机，侧座也可读 */}
       <Billboard position={[0, TABLE_TOP_Y + 0.08, SEAT_RADIUS - 1.31]}>
         <mesh>
-          <planeGeometry args={[0.72, 0.18]} />
+          <planeGeometry args={[0.8, 0.2]} />
           <meshStandardMaterial
-            map={nameTexture(placement.player.name)}
+            map={nameTexture(placement.player.name, eliminated)}
             emissive="#ffffff"
-            emissiveMap={nameTexture(placement.player.name)}
+            emissiveMap={nameTexture(placement.player.name, eliminated)}
             emissiveIntensity={0.75}
             transparent
             roughness={1}
@@ -91,7 +97,8 @@ export function SeatFigure({
         </mesh>
       </Billboard>
 
-      {/* 名牌（固定屏幕尺寸；zIndexRange 压到眼睑幕 z-40 之下，闭眼时不穿帮） */}
+      {/* 名牌（固定屏幕尺寸；zIndexRange 压到眼睑幕 z-40 之下，闭眼时不穿帮；
+          DOM 永远盖在 canvas 上，看牌时靠淡出让位给牌） */}
       <Html
         position={[0, 1.62, 0]}
         center
@@ -100,8 +107,8 @@ export function SeatFigure({
       >
         <div
           className={cn(
-            "flex items-center gap-1 rounded-full border border-moon-100/10 bg-night-900/70 px-2 py-0.5 whitespace-nowrap backdrop-blur-sm",
-            dimmed && "opacity-50",
+            "flex items-center gap-1 rounded-full border border-moon-100/10 bg-night-900/70 px-2 py-0.5 whitespace-nowrap backdrop-blur-sm transition-opacity duration-300",
+            hideTag ? "opacity-0" : dimmed ? "opacity-50" : "",
           )}
         >
           {isHost && <Crown className="h-3 w-3 text-candle-500" />}

@@ -80,9 +80,20 @@ export function VotingHud() {
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.25rem)" }}
       >
         {submitted ? (
-          <p className="rounded-full bg-night-900/60 px-4 py-2 font-display text-sm text-moon-100/45 backdrop-blur-sm">
-            已确认投票，等待其他玩家…
-          </p>
+          selected ? (
+            <p className="rounded-full bg-night-900/60 px-4 py-2 font-display text-sm text-moon-100/45 backdrop-blur-sm">
+              已投给{" "}
+              <span className="text-sage-500">
+                {publicState.players.find((p) => p.playerId === selected)?.name}
+              </span>
+              ，等待其他玩家…
+            </p>
+          ) : (
+            <p className="flex items-center gap-1.5 rounded-full bg-night-900/60 px-4 py-2 font-display text-sm text-moon-100/45 backdrop-blur-sm">
+              <Ban className="h-3.5 w-3.5" />
+              你已弃票，等待其他玩家…
+            </p>
+          )
         ) : (
           <>
             <p className="rounded-full border border-blood-500/25 bg-night-900/60 px-4 py-2 font-display text-sm text-blood-500/90 backdrop-blur-sm">

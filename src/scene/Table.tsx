@@ -37,23 +37,33 @@ const CANDLE_INTENSITY = 9
 /**
  * 桌心烛台：全场唯一的暖光源，强度带轻微摇曳。
  * 左右居中、略靠后 —— 正中要留给 3 张底牌。
+ * lit=false 时熄灭（白天用，避免烛光叠在翻开的牌上过曝），平滑过渡。
  */
 export function Candle({
   position = [0, TABLE_TOP_Y, -0.52] as [number, number, number],
+  lit = true,
 }: {
   position?: [number, number, number]
+  lit?: boolean
 }) {
   const light = useRef<PointLight>(null)
   const flame = useRef<Mesh>(null)
+  // 点亮包络：熄灭/点燃时平滑渐变
+  const env = useRef(lit ? 1 : 0)
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, dt) => {
     const t = clock.elapsedTime
+    env.current += ((lit ? 1 : 0) - env.current) * (1 - Math.exp(-dt * 2.5))
     // 多个不可通约频率叠加，模拟不规则烛光摇曳
     const flicker =
       0.85 + 0.1 * Math.sin(t * 11.3) * Math.sin(t * 5.7) + 0.05 * Math.sin(t * 27.1)
-    if (light.current) light.current.intensity = CANDLE_INTENSITY * flicker
+    if (light.current) {
+      light.current.intensity = env.current * CANDLE_INTENSITY * flicker
+    }
     if (flame.current) {
-      flame.current.scale.setScalar(0.9 + 0.15 * flicker)
+      flame.current.scale.setScalar(
+        Math.max(0.001, env.current * (0.9 + 0.15 * flicker)),
+      )
     }
   })
 
