@@ -45,12 +45,7 @@ export interface Room {
   privateStates: Map<string, PrivatePlayerState>;
   connections: Map<string, Socket>;
 
-  // ---- 播报对齐 ----
-  /** 当前正在等待 ack 的 cue；null 表示没有在等 */
-  pendingCueId: string | null;
-  narrationAcks: Set<string>;
-  onNarrationSettled: (() => void) | null;
-  narrationTimer: ReturnType<typeof setTimeout> | null;
+  /** narrationCueId 的自增计数（客户端据 cueId 变化触发本地播报） */
   cueCounter: number;
 
   /** 本夜晚步骤中已主动"结束回合"的行动者（每步开始时清空） */
@@ -104,10 +99,6 @@ export function createRoom(
     secret: null,
     privateStates: new Map(),
     connections: new Map(),
-    pendingCueId: null,
-    narrationAcks: new Set(),
-    onNarrationSettled: null,
-    narrationTimer: null,
     cueCounter: 0,
     endedTurn: new Set(),
     phaseTimer: null,
@@ -119,7 +110,6 @@ export function createRoom(
 
 export function destroyRoom(room: Room): void {
   clearPhaseTimer(room);
-  clearNarrationTimer(room);
   rooms.delete(room.roomId);
 }
 
@@ -186,13 +176,6 @@ export function clearPhaseTimer(room: Room): void {
   if (room.phaseTimer) {
     clearTimeout(room.phaseTimer);
     room.phaseTimer = null;
-  }
-}
-
-export function clearNarrationTimer(room: Room): void {
-  if (room.narrationTimer) {
-    clearTimeout(room.narrationTimer);
-    room.narrationTimer = null;
   }
 }
 

@@ -9,7 +9,8 @@
  *   1. recoverPhaseTimer —— 房主刷新页面后按 phaseEndsAt 重建 setTimeout。
  *      服务端进程常驻，定时器不会丢，整块删掉。
  *   2. narration waitIdle —— 原本等房主本机 TTS 播完才推进，把游戏节奏绑在
- *      一台设备上。改为等所有在线客户端回 narration_ack（封顶超时兜底）。
+ *      一台设备上。现在播报纯本地：服务端只广播 narrationCueId，
+ *      播报与倒计时并行，不等任何回执。
  */
 
 import { produce } from "immer";
@@ -42,15 +43,11 @@ import { computeEliminated } from "@/engine/voting";
 import { judgeWin } from "@/engine/winJudge";
 import {
   broadcastPublic,
-  clearNarrationTimer,
   clearPhaseTimer,
   sendPrivate,
   touch,
   type Room,
 } from "./room";
-
-/** 等所有在线客户端播完语音的封顶时长，超时就强行推进 */
-const NARRATION_TIMEOUT_MS = 8_000;
 
 /** 步骤超时推进时，为未提交 actor 生成的默认 actionType */
 const TIMEOUT_ACTION_TYPE: Record<Role, ActionType | null> = {
@@ -71,73 +68,12 @@ const TIMEOUT_ACTION_TYPE: Record<Role, ActionType | null> = {
 // ============================================================
 
 /**
- * 开一个新的播报窗口：换 cueId、清空 ack、phaseEndsAt 置空（倒计时暂停）。
- * 返回的 cueId 会随 publicState 广播出去。
+ * 换一个新的 narrationCueId 随 publicState 广播。客户端据此本地播报，
+ * 播报与倒计时并行进行，服务端不等待回执。
  */
 function beginNarration(room: Room): string {
-  clearNarrationTimer(room);
   room.cueCounter++;
-  const cueId = `cue-${room.cueCounter}`;
-  room.pendingCueId = cueId;
-  room.narrationAcks.clear();
-  return cueId;
-}
-
-function onlinePlayerIds(room: Room): string[] {
-  return room.publicState.players
-    .filter((p) => room.connections.has(p.playerId))
-    .map((p) => p.playerId);
-}
-
-/** 等所有在线玩家 ack，或超时。没有在线玩家时立即返回。 */
-function waitForNarration(room: Room): Promise<void> {
-  return new Promise<void>((resolve) => {
-    if (!room.pendingCueId) return resolve();
-    const online = onlinePlayerIds(room);
-    if (online.length === 0) {
-      settleNarration(room);
-      return resolve();
-    }
-    room.onNarrationSettled = resolve;
-    room.narrationTimer = setTimeout(() => {
-      settleNarration(room);
-    }, NARRATION_TIMEOUT_MS);
-  });
-}
-
-function settleNarration(room: Room): void {
-  clearNarrationTimer(room);
-  room.pendingCueId = null;
-  room.narrationAcks.clear();
-  const cb = room.onNarrationSettled;
-  room.onNarrationSettled = null;
-  cb?.();
-}
-
-/** 客户端播报完成回执 */
-export function handleNarrationAck(
-  room: Room,
-  playerId: string,
-  cueId: unknown,
-): void {
-  if (!room.pendingCueId || room.pendingCueId !== cueId) return;
-  room.narrationAcks.add(playerId);
-  const online = onlinePlayerIds(room);
-  if (online.every((id) => room.narrationAcks.has(id))) {
-    settleNarration(room);
-  }
-}
-
-/**
- * 掉线的玩家不该再把整局游戏卡在等 ack 上。
- * 连接断开时调用，若剩下的在线玩家都已 ack 就立即结算。
- */
-export function reconcileNarration(room: Room): void {
-  if (!room.pendingCueId) return;
-  const online = onlinePlayerIds(room);
-  if (online.length === 0 || online.every((id) => room.narrationAcks.has(id))) {
-    settleNarration(room);
-  }
+  return `cue-${room.cueCounter}`;
 }
 
 // ============================================================
@@ -206,19 +142,6 @@ async function forceEnterNightFromDealing(room: Room): Promise<void> {
 
 /** dealing → night step 0 */
 async function enterNight(room: Room): Promise<void> {
-  const cueId = beginNarration(room);
-  room.publicState = {
-    ...room.publicState,
-    gamePhase: "night",
-    phaseStartedAt: new Date().toISOString(),
-    phaseEndsAt: null,
-    currentNightStep: 0,
-    narrationCueId: cueId,
-    submittedPlayerIds: [],
-  };
-  broadcastPublic(room);
-
-  await waitForNarration(room);
   await enterNightStep(room, 0);
 }
 
@@ -249,7 +172,10 @@ async function enterNightStep(room: Room, stepIndex: number): Promise<void> {
   room.secret = { ...secret, nightStepIndex: stepIndex };
   room.endedTurn.clear();
 
-  // 先切步骤并暂停倒计时，让各端播"上一角色闭眼 / 本角色睁眼"
+  // 切步骤的同时就开始计时，播报（闭眼/睁眼台词）与倒计时并行
+  // 下限与大厅滑条一致（20s），设置来自客户端，这里兜底防更小的值
+  const actionTimeMs =
+    Math.max(room.publicState.settings.actionTime, 20) * 1000;
   const cueId = beginNarration(room);
   room.publicState = {
     ...room.publicState,
@@ -257,17 +183,6 @@ async function enterNightStep(room: Room, stepIndex: number): Promise<void> {
     currentNightStep: stepIndex,
     narrationCueId: cueId,
     submittedPlayerIds: [],
-    phaseStartedAt: new Date().toISOString(),
-    phaseEndsAt: null,
-  };
-  broadcastPublic(room);
-
-  await waitForNarration(room);
-
-  // 播完了才开始计时
-  const actionTimeMs = Math.max(room.publicState.settings.actionTime, 1) * 1000;
-  room.publicState = {
-    ...room.publicState,
     phaseStartedAt: new Date().toISOString(),
     phaseEndsAt: new Date(Date.now() + actionTimeMs).toISOString(),
   };
@@ -425,26 +340,15 @@ function affectedPlayerIds(action: NightAction | undefined): string[] {
 async function enterDayPhase(room: Room): Promise<void> {
   clearPhaseTimer(room);
 
+  // "天亮了"播报与讨论倒计时并行
+  const durationMs = room.publicState.settings.discussionTime * 60 * 1000;
   const cueId = beginNarration(room);
   room.publicState = {
-    ...markPhase(room.publicState, "day"),
+    ...markPhase(room.publicState, "day", durationMs / 1000),
     currentNightStep: null,
     narrationCueId: cueId,
     submittedPlayerIds: [],
     resultData: null,
-  };
-  broadcastPublic(room);
-
-  await waitForNarration(room);
-
-  // 播报期间房主可能已经点了"提前结束讨论"
-  if (room.publicState.gamePhase !== "day") return;
-
-  const durationMs = room.publicState.settings.discussionTime * 60 * 1000;
-  room.publicState = {
-    ...room.publicState,
-    phaseStartedAt: new Date().toISOString(),
-    phaseEndsAt: new Date(Date.now() + durationMs).toISOString(),
   };
   broadcastPublic(room);
 
@@ -563,10 +467,6 @@ function finalizeVoting(room: Room): void {
 
 export function playAgain(room: Room): void {
   clearPhaseTimer(room);
-  clearNarrationTimer(room);
-  room.pendingCueId = null;
-  room.narrationAcks.clear();
-  room.onNarrationSettled = null;
 
   const { publicState } = buildPlayAgainStates(room.publicState);
   room.publicState = publicState;

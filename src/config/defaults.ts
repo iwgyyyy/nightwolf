@@ -3,7 +3,7 @@ import type { RoomSettings } from "@/types"
 export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   roles: [],
   discussionTime: 5,
-  actionTime: 15,
+  actionTime: 20,
   voteTime: 30,
 }
 

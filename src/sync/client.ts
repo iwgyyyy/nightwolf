@@ -288,11 +288,6 @@ export class NightwolfClient {
     this.connection.send({ type: "host_command", data: { roomId, command } })
   }
 
-  /** 本机语音播完，通知服务端可以开始倒计时了 */
-  ackNarration(roomId: string, cueId: string): void {
-    this.connection.send({ type: "narration_ack", data: { roomId, cueId } })
-  }
-
   // ========================================================
   // 订阅
   // ========================================================

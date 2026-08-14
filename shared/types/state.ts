@@ -119,7 +119,7 @@ export interface PublicRoomState {
   phaseEndsAt: string | null
   /**
    * 语音播报对齐标识。每次进入需要播报的新阶段/步骤时由服务端换新值，
-   * 客户端播完后回 narration_ack 带上它；服务端等齐才设 phaseEndsAt 开始倒计时。
+   * 客户端据此触发本地播报；播报与倒计时并行进行。
    */
   narrationCueId: string | null
   /** 当前阶段已提交操作的玩家 ID */

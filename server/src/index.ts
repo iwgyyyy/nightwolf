@@ -37,9 +37,7 @@ import {
 import {
   confirmIdentity,
   endDay,
-  handleNarrationAck,
   playAgain,
-  reconcileNarration,
   startGame,
   submitNightAction,
   endNightTurn,
@@ -251,8 +249,6 @@ function detach(ws: Socket, quit = false): void {
     };
   }
   broadcastPublic(room);
-  // 掉线的人不该把整局卡在等播报 ack 上
-  reconcileNarration(room);
 }
 
 // ============================================================
@@ -323,11 +319,6 @@ const server = Bun.serve<SessionData>({
           return handlePlayerAction(ws, room, data);
         case "host_command":
           return handleHostCommand(ws, room, data);
-        case "narration_ack": {
-          const playerId = ws.data.playerId;
-          if (playerId) handleNarrationAck(room, playerId, data.cueId);
-          return;
-        }
       }
     },
 

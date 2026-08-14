@@ -27,6 +27,8 @@ const REACH_SEC = 0.7
 const SWAP_LIFT_SEC = 1.2
 const SWAP_DONE_SEC = 1.9
 const NO_RESULT_DONE_SEC = 2.2
+/** 步骤切换后延迟多久清姿态：等眼睑幕闭合（0.85s）再归位，避免看到牌飞回原位 */
+const POSE_RESET_DELAY_SEC = 1.2
 
 /**
  * 每张牌的实时姿态目标容器。模块级共享可变状态（场景单实例）：
@@ -269,13 +271,27 @@ export function NightScene() {
   }, [nightStep])
   useEffect(() => () => useNightUiStore.getState().reset(), [])
   const lastStep = useRef<number | null | undefined>(undefined)
+  const poseResetAt = useRef<number | null>(null)
 
   useFrame(({ clock, camera, size }) => {
     if (lastStep.current !== nightStep) {
+      const isFirstFrame = lastStep.current === undefined
       lastStep.current = nightStep
       actRef.current = null
-      for (const entry of cardPoses.values()) entry.current = null
       handPose.current.visible = false
+      if (isFirstFrame) {
+        // 场景刚挂载：直接清残留姿态
+        for (const entry of cardPoses.values()) entry.current = null
+        poseResetAt.current = null
+      } else {
+        // 步骤推进：换过牌/举起过的牌不能立即归位——damp 回原位的过程
+        // 看起来就像又发生了一次交换。等眼睑幕闭合后再清。
+        poseResetAt.current = clock.elapsedTime + POSE_RESET_DELAY_SEC
+      }
+    }
+    if (poseResetAt.current !== null && clock.elapsedTime >= poseResetAt.current) {
+      poseResetAt.current = null
+      for (const entry of cardPoses.values()) entry.current = null
     }
     const store = useNightUiStore.getState()
     const st = store.stage

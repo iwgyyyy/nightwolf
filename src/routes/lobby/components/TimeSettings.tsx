@@ -10,7 +10,7 @@ interface TimeSettingsProps {
 /** 各字段的范围与步长 */
 const FIELDS = {
   discussionTime: { min: 1, max: 15, step: 1, unit: "分钟" },
-  actionTime: { min: 10, max: 120, step: 5, unit: "秒" },
+  actionTime: { min: 20, max: 120, step: 5, unit: "秒" },
   voteTime: { min: 10, max: 120, step: 5, unit: "秒" },
 } as const
 

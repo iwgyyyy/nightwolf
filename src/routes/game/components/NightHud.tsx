@@ -1,18 +1,7 @@
 import { useState } from "react"
-import { Check, Moon, MoonStar } from "lucide-react"
+import { Check, Moon } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
 import { CountdownRing } from "@/components/game/CountdownRing"
 import { getSyncService } from "@/sync"
 import { useGameStore } from "@/stores/gameStore"
@@ -37,9 +26,7 @@ export function NightHud() {
   // 记录"发生在哪一步"，步骤推进后自动失效，无需 effect 重置
   const currentStep = publicState?.currentNightStep ?? null
   const [submittingAtStep, setSubmittingAtStep] = useState<number | null>(null)
-  const [endedAtStep, setEndedAtStep] = useState<number | null>(null)
   const submitting = submittingAtStep !== null && submittingAtStep === currentStep
-  const turnEnded = endedAtStep !== null && endedAtStep === currentStep
 
   if (!publicState) return null
 
@@ -182,51 +169,7 @@ export function NightHud() {
       </Button>
     )
   } else if (submitted || stage === "waiting" || result) {
-    bottom = (
-      <div className="flex w-full flex-col items-center gap-2">
-        <Hint text="已完成，闭眼等待其他玩家…" muted />
-        {submitted && !turnEnded && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="outline"
-                className="h-10 w-full max-w-xs gap-2 font-display"
-              >
-                <MoonStar className="h-4 w-4" />
-                立刻结束回合
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>结束你的回合？</AlertDialogTitle>
-                <AlertDialogDescription>
-                  确认后你的回合立刻结束。本步骤所有行动者都结束后，
-                  夜晚会直接进入下一步，不再等待倒计时。
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>再想想</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => {
-                    setEndedAtStep(currentStep)
-                    try {
-                      getSyncService().submitAction(publicState.roomId, {
-                        kind: "endNightTurn",
-                      })
-                    } catch {
-                      toast.error("操作失败")
-                      setEndedAtStep(null)
-                    }
-                  }}
-                >
-                  结束回合
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
-      </div>
-    )
+    bottom = <Hint text="已完成，闭眼等待其他玩家…" muted />
   }
 
   return (

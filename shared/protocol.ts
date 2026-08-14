@@ -71,11 +71,6 @@ export type ClientMessage =
   /** 玩家意图：确认身份 / 夜晚操作 / 投票 / 改名 */
   | { type: "player_action"; data: { roomId: string; action: PlayerAction } }
   | { type: "host_command"; data: { roomId: string; command: HostCommand } }
-  /**
-   * 本机语音播报完成。服务端等齐全部在线玩家的 ack（或超时）后才开始倒计时，
-   * 保证语速慢的设备不会"还在听提示就已经在扣时间"。
-   */
-  | { type: "narration_ack"; data: { roomId: string; cueId: string } }
   | { type: "ping"; data: Record<string, never> };
 
 // ============================================================
@@ -115,7 +110,6 @@ const CLIENT_TYPES = new Set<string>([
   "leave_room",
   "player_action",
   "host_command",
-  "narration_ack",
   "ping",
 ]);
 

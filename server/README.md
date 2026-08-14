@@ -51,7 +51,6 @@ Bun 原生执行 TypeScript，没有构建步骤。游戏引擎从 `../shared/en
 | `leave_room` | `{ roomId }` | |
 | `player_action` | `{ roomId, action }` | 确认身份 / 夜晚操作 / 投票 / 改名 |
 | `host_command` | `{ roomId, command }` | 开始游戏 / 改设置 / 结束讨论 / 再来一局 / 解散 |
-| `narration_ack` | `{ roomId, cueId }` | 本机语音播完 |
 | `ping` | `{}` | |
 
 ### Server → Client
@@ -76,11 +75,9 @@ token 是**无状态签名**而非服务端存储的随机串，因为存内存�
 
 连续 5 次失败会按来源 IP 锁定 1 分钟。
 
-## 语音播报对齐
+## 语音播报
 
-夜晚推进曾经绑在房主设备的 TTS 播放进度上（`await waitIdle()`）。现在服务端切换步骤时下发一个 `narrationCueId`，各客户端本地播完回 `narration_ack`，服务端等齐（封顶 8 秒）才开始倒计时。
-
-客户端**即使不需要出声也必须 ack**（例如刷新后首次收到状态），否则会把房间卡到超时。
+服务端切换阶段/步骤时下发一个新的 `narrationCueId`，各客户端据此本地播报（真人录音，缺失时回退 TTS）。播报与倒计时**并行**：`phaseEndsAt` 在步骤开始时就已设定，服务端不等待任何回执。行动时间下限 20 秒，足够盖过最长的睁眼台词。
 
 ## 部署约束
 
