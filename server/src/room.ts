@@ -53,6 +53,9 @@ export interface Room {
   narrationTimer: ReturnType<typeof setTimeout> | null;
   cueCounter: number;
 
+  /** 本夜晚步骤中已主动"结束回合"的行动者（每步开始时清空） */
+  endedTurn: Set<string>;
+
   /** 当前阶段的推进定时器（服务端常驻，不再依赖房主设备在线） */
   phaseTimer: ReturnType<typeof setTimeout> | null;
   lastActivity: number;
@@ -106,6 +109,7 @@ export function createRoom(
     onNarrationSettled: null,
     narrationTimer: null,
     cueCounter: 0,
+    endedTurn: new Set(),
     phaseTimer: null,
     lastActivity: Date.now(),
   };

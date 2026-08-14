@@ -42,6 +42,7 @@ import {
   reconcileNarration,
   startGame,
   submitNightAction,
+  endNightTurn,
   submitVote,
   updateProfile,
   updateSettings,
@@ -159,6 +160,9 @@ function handlePlayerAction(ws: Socket, room: Room, data: Record<string, unknown
       return;
     case "nightAction":
       submitNightAction(room, playerId, action.submission);
+      return;
+    case "endNightTurn":
+      endNightTurn(room, playerId);
       return;
     case "vote":
       submitVote(room, playerId, action.targetId ?? null);

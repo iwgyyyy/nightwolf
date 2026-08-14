@@ -50,5 +50,11 @@ export type NightActionResult =
 export type PlayerAction =
   | { kind: "confirmIdentity" }
   | { kind: "nightAction"; submission: NightActionSubmission }
+  /**
+   * 夜晚行动完成后主动结束自己的回合。
+   * 本步骤所有行动者都结束时服务端提前推进（submittedPlayerIds 本就公开
+   * "谁已行动"，提前推进不引入新的信息泄露）。
+   */
+  | { kind: "endNightTurn" }
   | { kind: "vote"; targetId: string | null }
   | { kind: "updateProfile"; name: string }

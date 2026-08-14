@@ -247,6 +247,7 @@ async function enterNightStep(room: Room, stepIndex: number): Promise<void> {
   const actors = getActorsForStep(stepRole, secret);
 
   room.secret = { ...secret, nightStepIndex: stepIndex };
+  room.endedTurn.clear();
 
   // 先切步骤并暂停倒计时，让各端播"上一角色闭眼 / 本角色睁眼"
   const cueId = beginNarration(room);
@@ -383,6 +384,30 @@ export function submitNightAction(
       submittedPlayerIds: [...room.publicState.submittedPlayerIds, playerId],
     };
     broadcastPublic(room);
+  }
+}
+
+/**
+ * 玩家行动完成后主动结束自己的回合。
+ * 本步骤所有行动者都提交并结束时，提前推进（不必等满 actionTime）。
+ */
+export function endNightTurn(room: Room, playerId: string): void {
+  const secret = room.secret;
+  if (!secret) return;
+  if (room.publicState.gamePhase !== "night") return;
+
+  const steps = nightStepsFor(secret);
+  const stepRole = steps[secret.nightStepIndex];
+  if (!stepRole) return;
+  const actors = getActorsForStep(stepRole, secret);
+  // 只有本步骤已提交过行动的行动者能结束回合
+  if (!actors.includes(playerId)) return;
+  if (!room.publicState.submittedPlayerIds.includes(playerId)) return;
+
+  room.endedTurn.add(playerId);
+  if (actors.every((id) => room.endedTurn.has(id))) {
+    clearPhaseTimer(room);
+    void advanceNightStep(room, secret.nightStepIndex);
   }
 }
 
