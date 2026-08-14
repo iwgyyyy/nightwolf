@@ -75,6 +75,22 @@ command="/srv/nightwolf/ssh-gate.sh",no-pty,no-agent-forwarding,no-port-forwardi
 | `SSH_HOST` / `SSH_USER` | 服务器地址与用户 |
 | `SSH_PRIVATE_KEY` | `pbcopy < ~/.ssh/nightwolf_deploy` |
 | `VITE_WS_URL` | `wss://你的域名/api` |
+| `VITE_ICE_SERVERS` | 房间语音的 STUN/TURN 配置，JSON 数组，见下文 coturn |
+
+## coturn（房间语音的 TURN 中继）
+
+房间语音是 WebRTC P2P，直连打洞失败（国内对称 NAT 常见）时靠服务器上的
+coturn 中继兜底。配置在 `/etc/turnserver.conf`：公私网映射
+`external-ip=公网IP/私网IP`、账号 `user=nightwolf:<随机串>`、
+中继端口 49152-65535、denied-peer-ip 禁掉内网与云元数据段、限额防滥用。
+
+- 安全组需放行 **UDP 3478** 与 **UDP 49152-65535**（入方向）
+- 配置文件权限须为 `root:turnserver 640`——600 会让以 turnserver
+  用户运行的进程读不到配置，静默回退默认配置（无账号、无 external-ip）
+- `VITE_ICE_SERVERS` 的值形如：
+  `[{"urls":"stun:公网IP:3478"},{"urls":"turn:公网IP:3478?transport=udp","username":"nightwolf","credential":"<随机串>"}]`
+- 验证：浏览器 `RTCPeerConnection` 用 `iceTransportPolicy:"relay"`
+  能拿到 `typ relay` candidate 即通
 
 ## 重要约束
 

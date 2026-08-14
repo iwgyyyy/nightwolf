@@ -56,6 +56,8 @@ jobs:
         env:
           # 与后端同域，走 Caddy 的 /api 反代
           VITE_WS_URL: ${{ secrets.VITE_WS_URL }}
+          # 房间语音的 STUN/TURN（服务器上的 coturn），JSON 数组
+          VITE_ICE_SERVERS: ${{ secrets.VITE_ICE_SERVERS }}
         run: bun run build
 
       - name: 确认构建产物不含明文凭证
