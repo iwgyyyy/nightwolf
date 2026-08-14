@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 #
 # 服务器端部署脚本，放在 /srv/nightwolf/deploy.sh。
-# CI 通过 SSH 调用它，所以 authorized_keys 里可以用
-#   command="/srv/nightwolf/deploy.sh",no-pty,no-port-forwarding ssh-ed25519 AAAA...
-# 把部署密钥限制成只能干这一件事，登不进 shell。
+# CI 先把构建上下文（server/ + shared/）rsync 到 build/，再通过 SSH 调用本脚本；
+# CI 密钥在 authorized_keys 里被 command="/srv/nightwolf/ssh-gate.sh" 锁死。
+#
+# 不走镜像仓库：单机部署，直接在服务器上 docker build 本地镜像
+# （.env 里 IMAGE=nightwolf-server:local）。
 
 set -euo pipefail
 
 APP_DIR=/srv/nightwolf
 cd "$APP_DIR"
 
-echo "[deploy] 拉取镜像…"
-docker compose pull
+echo "[deploy] 本地构建镜像…"
+docker build -f build/server/Dockerfile -t nightwolf-server:local build/
 
 # 单实例、状态在内存：重启会掐断所有进行中的对局。
 # 这里只提示，不阻断 —— 真要严格的话把下面的 exit 1 打开。

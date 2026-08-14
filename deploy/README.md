@@ -26,10 +26,10 @@ apt update && apt install -y caddy
 mkdir -p /srv/nightwolf/dist
 ```
 
-把本目录的 `docker-compose.yml`、`deploy.sh` 放到 `/srv/nightwolf/`，`Caddyfile` 放到 `/etc/caddy/`：
+把本目录的 `docker-compose.yml`、`deploy.sh`、`ssh-gate.sh` 放到 `/srv/nightwolf/`，`Caddyfile` 放到 `/etc/caddy/`：
 
 ```bash
-chmod +x /srv/nightwolf/deploy.sh
+chmod +x /srv/nightwolf/deploy.sh /srv/nightwolf/ssh-gate.sh
 systemctl reload caddy
 ```
 
@@ -38,8 +38,8 @@ systemctl reload caddy
 这个文件不进仓库，手动创建。它同时被 compose 用作变量插值和容器环境变量：
 
 ```bash
-# 镜像地址（CI 推的是 latest）
-IMAGE=registry.cn-shenzhen.aliyuncs.com/<命名空间>/nightwolf-server:latest
+# 镜像在服务器本地构建（deploy.sh 里 docker build），不走镜像仓库
+IMAGE=nightwolf-server:local
 
 # 管理员凭证 —— 唯一存放密码的地方
 ADMIN_USERNAME=你的用户名
@@ -53,34 +53,25 @@ ADMIN_PASSWORD=一个足够强的密码
 chmod 600 /srv/nightwolf/.env
 ```
 
-## 登录 ACR
-
-服务器要能拉私有镜像：
-
-```bash
-docker login registry.cn-shenzhen.aliyuncs.com -u <用户名>
-```
-
 ## SSH 密钥
 
 两把，用途分开：
 
 - **你自己登录**：`~/.ssh/id_ed25519.pub`
-- **CI 部署**：`~/.ssh/nightwolf_deploy.pub`，在 `authorized_keys` 里限制成只能跑部署脚本
+- **CI 部署**：`~/.ssh/nightwolf_deploy.pub`，在 `authorized_keys` 里用网关脚本
+  `ssh-gate.sh` 锁死——只放行「rsync 前端产物到 dist/」「rsync 后端源码到 build/」
+  「执行 deploy.sh」三件事
 
 ```
-command="/srv/nightwolf/deploy.sh",no-pty,no-agent-forwarding,no-port-forwarding,no-X11-forwarding ssh-ed25519 AAAA... github-actions-nightwolf
+command="/srv/nightwolf/ssh-gate.sh",no-pty,no-agent-forwarding,no-port-forwarding,no-X11-forwarding ssh-ed25519 AAAA... github-actions-nightwolf
 ```
 
-这样即使 GitHub Secrets 泄露，拿到的也只是"触发一次部署"的权限，登不进 shell。
+这样即使 GitHub Secrets 泄露，拿到的也只是"传产物+触发一次部署"的权限，登不进 shell。
 
 ## GitHub Secrets
 
 | 名称 | 值 |
 |---|---|
-| `ACR_REGISTRY` | `registry.cn-shenzhen.aliyuncs.com` |
-| `ACR_NAMESPACE` | ACR 命名空间 |
-| `ACR_USERNAME` / `ACR_PASSWORD` | ACR 访问凭证 |
 | `SSH_HOST` / `SSH_USER` | 服务器地址与用户 |
 | `SSH_PRIVATE_KEY` | `pbcopy < ~/.ssh/nightwolf_deploy` |
 | `VITE_WS_URL` | `wss://你的域名/api` |
