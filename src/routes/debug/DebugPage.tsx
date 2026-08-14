@@ -3,7 +3,6 @@ import { Link } from "react-router"
 import { ChevronLeft } from "lucide-react"
 import { Card } from "@/components/game/Card"
 import { ROLE_GLYPH } from "@/components/game/role-display"
-import { CardSwap } from "@/components/game/CardSwap"
 import { PlayerSeat } from "@/components/game/PlayerSeat"
 import { PlayerTable } from "@/components/game/PlayerTable"
 import { CountdownRing } from "@/components/game/CountdownRing"
@@ -178,11 +177,6 @@ export default function DebugPage() {
           </div>
         </Section>
 
-        {/* CardSwap */}
-        <Section title="CardSwap · 换牌动画">
-          <CardSwapDemo />
-        </Section>
-
         {/* Sleeping */}
         <Section title="PlayerSeat · 闭眼（isSleeping）">
           <SleepingDemo />
@@ -228,64 +222,6 @@ function Section({
       <h2 className="mb-4 font-display text-lg text-moon-100/80">{title}</h2>
       {children}
     </section>
-  )
-}
-
-// ============================================================
-// CardSwap demo
-// ============================================================
-
-function CardSwapDemo() {
-  const [iter, setIter] = useState(0)
-  const [reveal, setReveal] = useState(false)
-
-  // 通过 key 重置动画
-  const resetAnimation = () => {
-    setReveal(false)
-    setIter((i) => i + 1)
-  }
-
-  return (
-    <div className="flex flex-col items-start gap-4">
-      <div className="flex gap-2">
-        <Button size="sm" onClick={resetAnimation}>
-          重播换牌
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setReveal((r) => !r)}
-        >
-          {reveal ? "翻回背面" : "翻看新牌（强盗）"}
-        </Button>
-      </div>
-      <CardSwap
-        key={iter}
-        cards={[
-          {
-            id: "a",
-            role: "robber",
-            revealed: false,
-            label: "你",
-            from: { x: -120, y: 0 },
-            to: { x: 120, y: 0 },
-          },
-          {
-            id: "b",
-            role: "werewolf",
-            revealed: reveal,
-            label: reveal ? "变为狼人" : "对方",
-            from: { x: 120, y: 0 },
-            to: { x: -120, y: 0 },
-          },
-        ]}
-        width={320}
-        height={180}
-      />
-      <p className="text-xs text-moon-100/40">
-        强盗（左）与目标（右）交换身份。点击"翻看新牌"模拟强盗翻开换来的牌。
-      </p>
-    </div>
   )
 }
 

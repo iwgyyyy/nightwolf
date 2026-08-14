@@ -11,12 +11,16 @@ import {
 import { useHasName } from "@/hooks/use-local-player"
 import { PhaseTransition } from "@/components/game/PhaseTransition"
 import { NightCurtainHost } from "@/components/game/NightCurtain"
+import { GameScene } from "@/scene/GameScene"
+import { DealingScene } from "@/scene/DealingScene"
+import { NightScene, NightTableLight } from "@/scene/NightScene"
+import { LeaveRoomButton } from "@/components/LeaveRoomButton"
 import type { GamePhase } from "@/types"
-import DealingScreen from "./components/DealingScreen"
-import NightScreen from "./components/NightScreen"
 import DayScreen from "./components/DayScreen"
 import VotingScreen from "./components/VotingScreen"
 import ResultScreen from "./components/ResultScreen"
+import { DealingHud } from "./components/DealingHud"
+import { NightHud } from "./components/NightHud"
 import { PhasePlaceholder } from "./components/PhasePlaceholder"
 
 export default function GamePage() {
@@ -25,7 +29,7 @@ export default function GamePage() {
   const hasName = useHasName()
 
   // 桥接 sync → store
-  useGameSync({ roomId, enabled: hasName })
+  const { playerId, isHost } = useGameSync({ roomId, enabled: hasName })
   // 所有玩家都按本地 publicState 变化播报语音
   useNarrationSync()
   // 保持屏幕唤醒，防止手机息屏打断计时/语音
@@ -64,31 +68,71 @@ export default function GamePage() {
     )
   }
 
+  // 3D 化推进中：dealing / night 已入桌；其余阶段仍是旧 2D 屏，盖在场景上层
+  const sceneDriven = phase === "dealing" || phase === "night"
+
   return (
-    <>
-      <PhaseDispatcher phase={phase} />
+    <main className="fixed inset-0 overflow-hidden">
+      <GameScene
+        players={publicState.players}
+        selfId={playerId}
+        hostId={publicState.hostId}
+        confirmedIds={
+          phase === "dealing" ? publicState.submittedPlayerIds : undefined
+        }
+      >
+        {phase === "dealing" && <DealingScene />}
+        {phase === "night" && (
+          <>
+            <NightScene />
+            <NightTableLight />
+          </>
+        )}
+      </GameScene>
+
+      {phase === "dealing" && <DealingHud />}
+      {phase === "night" && <NightHud />}
+      {!sceneDriven && (
+        <div className="absolute inset-0 overflow-y-auto bg-night-900">
+          <PhaseDispatcher phase={phase} />
+        </div>
+      )}
+
+      {/* 退出/解散：任意阶段可用，z-50 保证闭眼幕布之上也能点到 */}
+      {roomId && (
+        <div
+          className="absolute left-1 z-50"
+          style={{ bottom: "calc(env(safe-area-inset-bottom) + 0.25rem)" }}
+        >
+          <LeaveRoomButton
+            roomId={roomId}
+            isHost={isHost}
+            inGame
+            variant="icon"
+          />
+        </div>
+      )}
+
       {/* night 阶段由 NightCurtain 接管过场，避免双层动画 */}
       <PhaseTransition
         phase={phase === "night" ? null : phase}
         duration={900}
       />
       <NightCurtainHost />
-    </>
+    </main>
   )
 }
 
 function PhaseDispatcher({ phase }: { phase: GamePhase }) {
   switch (phase) {
-    case "dealing":
-      return <DealingScreen />
-    case "night":
-      return <NightScreen />
     case "day":
       return <DayScreen />
     case "voting":
       return <VotingScreen />
     case "result":
       return <ResultScreen />
+    case "dealing":
+    case "night":
     case "waiting":
       return <LoadingScreen />
   }
