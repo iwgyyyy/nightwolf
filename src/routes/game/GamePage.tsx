@@ -2,6 +2,7 @@ import { useEffect } from "react"
 import { useNavigate, useParams } from "react-router"
 import { Moon } from "lucide-react"
 import { useGameSync } from "@/hooks/use-game-sync"
+import { useVoiceChat } from "@/hooks/use-voice-chat"
 import { useWakeLock } from "@/hooks/use-wake-lock"
 import { useNarrationSync } from "@/hooks/use-narration-sync"
 import {
@@ -20,6 +21,7 @@ import { TableCards } from "@/scene/TableCards"
 import { VotingScene } from "@/scene/VotingScene"
 import { ResultScene } from "@/scene/ResultScene"
 import { LeaveRoomButton } from "@/components/LeaveRoomButton"
+import { MicButton } from "@/components/game/MicButton"
 import { DealingHud } from "./components/DealingHud"
 import { NightHud } from "./components/NightHud"
 import { DayHud } from "./components/DayHud"
@@ -34,6 +36,8 @@ export default function GamePage() {
 
   // 桥接 sync → store
   const { playerId, isHost } = useGameSync({ roomId, enabled: hasName })
+  // 房间语音：夜晚强制禁麦、天亮自动开麦由 VoiceService 内部按阶段执行
+  useVoiceChat(hasName ? roomId : undefined)
   // 所有玩家都按本地 publicState 变化播报语音
   useNarrationSync()
   // 保持屏幕唤醒，防止手机息屏打断计时/语音
@@ -135,6 +139,8 @@ export default function GamePage() {
           <LeaveRoomButton roomId={roomId} isHost={isHost} inGame />
         </div>
       )}
+
+      <MicButton />
 
       {/* night 阶段由 NightCurtain 接管过场，避免双层动画 */}
       <PhaseTransition

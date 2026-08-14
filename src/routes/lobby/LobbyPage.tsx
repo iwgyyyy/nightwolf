@@ -29,6 +29,8 @@ import { getSyncService } from "@/sync"
 import { getNarrationService } from "@/services/NarrationService"
 import { useHasName } from "@/hooks/use-local-player"
 import { useGameSync } from "@/hooks/use-game-sync"
+import { useVoiceChat } from "@/hooks/use-voice-chat"
+import { MicButton } from "@/components/game/MicButton"
 import { useIsMobile } from "@/hooks/use-is-mobile"
 import { useGameStore, selectPlayers } from "@/stores/gameStore"
 import { MAX_PLAYERS_PER_ROOM } from "@/config/defaults"
@@ -47,6 +49,8 @@ export default function LobbyPage() {
 
   // 桥接 sync → store
   const { playerId, isHost } = useGameSync({ roomId, enabled: hasName })
+  // 房间语音：进房即建连，麦默认关闭
+  useVoiceChat(hasName ? roomId : undefined)
 
   // 从 store 读取
   const publicState = useGameStore((s) => s.publicState)
@@ -114,6 +118,8 @@ export default function LobbyPage() {
         selfId={playerId}
         hostId={publicState?.hostId ?? null}
       />
+
+      <MicButton />
 
       {/* ===== HUD 顶栏 ===== */}
       <header

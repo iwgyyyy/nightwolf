@@ -30,6 +30,11 @@ export function getSyncService(): NightwolfClient {
  */
 function resolveWsUrl(raw: string): string {
   if (typeof window === "undefined") return raw
+  // 相对路径（如 "/api"）：按当前页面同源推导，https 页面自动用 wss
+  if (raw.startsWith("/")) {
+    const proto = window.location.protocol === "https:" ? "wss:" : "ws:"
+    return `${proto}//${window.location.host}${raw}`
+  }
   try {
     const url = new URL(raw)
     if (

@@ -319,6 +319,21 @@ const server = Bun.serve<SessionData>({
           return handlePlayerAction(ws, room, data);
         case "host_command":
           return handleHostCommand(ws, room, data);
+        case "voice_signal": {
+          // 纯中继：不解析 signal 内容，只转发给同房间的目标玩家
+          const playerId = ws.data.playerId;
+          const { targetId, signal } = data as {
+            targetId?: unknown;
+            signal?: unknown;
+          };
+          if (!playerId || typeof targetId !== "string") return;
+          const target = room.connections.get(targetId);
+          if (!target) return;
+          return send(target, {
+            type: "voice_signal",
+            data: { fromId: playerId, signal },
+          });
+        }
       }
     },
 
