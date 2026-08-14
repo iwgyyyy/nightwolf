@@ -1,7 +1,9 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
+import { CountdownRing } from "@/components/game/CountdownRing"
 import { buildNightSteps } from "@/engine/nightOrder"
 import { useGameStore, selectGamePhase } from "@/stores/gameStore"
+import { ROLE_META } from "@/types"
 
 interface NightCurtainProps {
   /** 是否"睁眼"：true = 两片幕布退到屏幕外，false = 合拢覆盖屏幕 */
@@ -24,6 +26,19 @@ const CURTAIN_TRANSITION = {
 export function NightCurtain({ isOpen }: NightCurtainProps) {
   // 仅在"首次非 actor 挂载"时播放一次眼睛动画；后续 isOpen 变化不重播
   const [playEye] = useState(() => !isOpen)
+  // 眼睛动画播完（约 0.85s delay + 2.4s）前中央让位，播完后再显示回合信息
+  const [eyeDone, setEyeDone] = useState(!playEye)
+  useEffect(() => {
+    if (eyeDone) return
+    const timer = setTimeout(() => setEyeDone(true), 3400)
+    return () => clearTimeout(timer)
+  }, [eyeDone])
+
+  const publicState = useGameStore((s) => s.publicState)
+  const stepIdx = publicState?.currentNightStep ?? 0
+  const currentStepRole = publicState
+    ? (buildNightSteps(publicState.settings.roles)[stepIdx] ?? null)
+    : null
 
   return (
     <motion.div
@@ -60,6 +75,35 @@ export function NightCurtain({ isOpen }: NightCurtainProps) {
 
       {/* 眼睛动画（仅首次合拢后播一次） */}
       {playEye && <ClosingEye />}
+
+      {/* 闭眼时把当前回合与倒计时放到幕布正中（非 actor 唯一的信息源） */}
+      <AnimatePresence>
+        {!isOpen && eyeDone && publicState && (
+          <motion.div
+            key="turn-info"
+            className="absolute inset-0 flex flex-col items-center justify-center gap-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { duration: 0.6, delay: 0.5 } }}
+            exit={{ opacity: 0, transition: { duration: 0.25 } }}
+          >
+            <div className="text-center">
+              <p className="font-sans text-[0.6rem] uppercase tracking-[0.35em] text-candle-500/70">
+                Night
+              </p>
+              <h2 className="mt-1.5 font-display text-2xl text-moon-100/90">
+                {currentStepRole
+                  ? `${ROLE_META[currentStepRole].displayName}请睁眼`
+                  : "夜晚进行中"}
+              </h2>
+            </div>
+            <CountdownRing
+              endsAt={publicState.phaseEndsAt}
+              totalSeconds={publicState.settings.actionTime}
+              size={84}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }

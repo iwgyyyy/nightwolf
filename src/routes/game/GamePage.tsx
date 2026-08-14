@@ -98,18 +98,13 @@ export default function GamePage() {
         </div>
       )}
 
-      {/* 退出/解散：任意阶段可用，z-50 保证闭眼幕布之上也能点到 */}
+      {/* 退出/解散：左上角与大厅一致，z-50 保证闭眼幕布之上也能点到 */}
       {roomId && (
         <div
-          className="absolute left-1 z-50"
-          style={{ bottom: "calc(env(safe-area-inset-bottom) + 0.25rem)" }}
+          className="absolute left-2 z-50"
+          style={{ top: "calc(env(safe-area-inset-top) + 0.65rem)" }}
         >
-          <LeaveRoomButton
-            roomId={roomId}
-            isHost={isHost}
-            inGame
-            variant="icon"
-          />
+          <LeaveRoomButton roomId={roomId} isHost={isHost} inGame />
         </div>
       )}
 

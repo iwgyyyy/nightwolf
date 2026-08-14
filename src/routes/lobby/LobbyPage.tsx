@@ -7,6 +7,7 @@ import {
   Copy,
   DoorClosed,
   Gamepad2,
+  Link2,
   Play,
   Search,
   Settings2,
@@ -16,7 +17,6 @@ import { toast } from "sonner"
 import { PlayerAvatar } from "@/components/game/PlayerAvatar"
 import { Button } from "@/components/ui/button"
 import { NamePromptDialog } from "@/components/NamePromptDialog"
-import { ShareLinkButton } from "@/components/ShareLinkButton"
 import { LeaveRoomButton } from "@/components/LeaveRoomButton"
 import {
   Sheet,
@@ -123,24 +123,25 @@ export default function LobbyPage() {
         <div className="pointer-events-auto">
           <LeaveRoomButton roomId={roomId!} isHost={isHost} />
         </div>
-        <div className="pointer-events-auto">
+        <div className="pointer-events-auto flex items-center gap-1.5">
           <RoomCodePill
             roomId={roomId!}
             onClick={copyRoomId}
             copied={roomIdCopied}
           />
+          <InviteLinkButton roomId={roomId!} />
         </div>
         <span className="w-9 text-right font-sans text-sm text-moon-100/50">
           {publicState ? `${players.length}/${MAX_PLAYERS_PER_ROOM}` : "…"}
         </span>
       </header>
 
-      {/* ===== 自己的座位标识（左下） ===== */}
-      {selfName && (
+      {/* ===== 自己的座位标识：房主在左下，非房主并入底部居中（footer 内） ===== */}
+      {selfName && isHost && (
         <div className="absolute bottom-56 left-4 z-10 flex items-center gap-2 rounded-full border border-moon-100/10 bg-night-900/60 py-1 pr-3 pl-1 backdrop-blur-sm sm:bottom-28">
-          <PlayerAvatar name={selfName} size={28} ring={isHost ? "candle" : "none"} />
+          <PlayerAvatar name={selfName} size={28} ring="candle" />
           <span className="font-display text-sm text-moon-100/85">{selfName}</span>
-          <span className="text-xs text-moon-100/40">你{isHost && " · 房主"}</span>
+          <span className="text-xs text-moon-100/40">你 · 房主</span>
         </div>
       )}
 
@@ -149,16 +150,10 @@ export default function LobbyPage() {
         className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-3 px-5"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.25rem)" }}
       >
-        {publicState && players.length < 3 && (
-          <p className="text-center font-sans text-sm text-moon-100/55">
-            至少需要 3 名玩家，把房间号分享给朋友吧
-          </p>
-        )}
         {!publicState ? (
           <p className="font-sans text-sm text-moon-100/45">连接中…</p>
         ) : isHost ? (
           <div className="flex w-full max-w-xl flex-col gap-2 sm:flex-row">
-            <ShareLinkButton roomId={roomId!} className="h-12 sm:flex-1" />
             <Button
               variant="outline"
               className="h-12 gap-2 font-display"
@@ -177,9 +172,20 @@ export default function LobbyPage() {
             </Button>
           </div>
         ) : (
-          <p className="font-sans text-sm text-moon-100/55">
-            等待房主配置角色并开始游戏…
-          </p>
+          <>
+            {selfName && (
+              <div className="flex items-center gap-2 rounded-full border border-moon-100/10 bg-night-900/60 py-1 pr-3 pl-1 backdrop-blur-sm">
+                <PlayerAvatar name={selfName} size={24} ring="none" />
+                <span className="font-display text-xs text-moon-100/85">
+                  {selfName}
+                </span>
+                <span className="text-[0.65rem] text-moon-100/40">你</span>
+              </div>
+            )}
+            <p className="font-sans text-sm text-moon-100/55">
+              等待房主配置角色并开始游戏…
+            </p>
+          </>
         )}
       </footer>
 
@@ -239,6 +245,42 @@ export default function LobbyPage() {
 // ============================================================
 // Subcomponents
 // ============================================================
+
+/** 顶栏房间号右侧的邀请链接复制按钮 */
+function InviteLinkButton({ roomId }: { roomId: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    if (copied) return
+    const ok = await copyToClipboard(`${window.location.origin}/room/${roomId}`)
+    if (ok) {
+      setCopied(true)
+      toast.success("邀请链接已复制")
+      setTimeout(() => setCopied(false), 2000)
+    } else {
+      toast.error("复制失败，请手动复制链接")
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      disabled={copied}
+      className={cn(
+        "flex h-8 w-8 items-center justify-center rounded-full bg-night-800/60 text-candle-500 backdrop-blur-sm transition",
+        copied ? "cursor-default" : "hover:bg-night-700 cursor-pointer",
+      )}
+      aria-label={copied ? "已复制" : "复制邀请链接"}
+    >
+      {copied ? (
+        <Check className="h-3.5 w-3.5" />
+      ) : (
+        <Link2 className="h-3.5 w-3.5" />
+      )}
+    </button>
+  )
+}
 
 function RoomCodePill({
   roomId,

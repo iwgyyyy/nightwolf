@@ -52,22 +52,24 @@ export function DealingHud() {
 
   return (
     <>
-      {/* 顶部：阶段标题 + 倒计时 */}
+      {/* 顶部：阶段标题居中（避开左上角退出/解散按钮）+ 右侧倒计时 */}
       <header
-        className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between px-5"
+        className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-end px-5"
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.75rem)" }}
       >
-        <div>
+        <div className="absolute inset-x-0 text-center">
           <p className="font-sans text-[0.6rem] uppercase tracking-[0.35em] text-candle-500/70">
             Dealing
           </p>
           <h1 className="font-display text-xl text-moon-100/90">确认身份</h1>
         </div>
-        <CountdownRing
-          endsAt={publicState.phaseEndsAt}
-          totalSeconds={DEALING_TIMEOUT_SEC}
-          size={52}
-        />
+        <div className="relative">
+          <CountdownRing
+            endsAt={publicState.phaseEndsAt}
+            totalSeconds={DEALING_TIMEOUT_SEC}
+            size={52}
+          />
+        </div>
       </header>
 
       {/* 底部：按交互阶段切换 */}

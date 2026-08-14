@@ -25,7 +25,7 @@ import type { NightActionSubmission } from "@/types"
 
 /**
  * 夜晚阶段 HUD（DOM 层）。
- * 顶栏 z-50 盖在眼睑幕之上（所有人可见：当前步骤是公开信息）；
+ * 顶栏 z-50 仅 actor 睁眼时显示；非 actor 的回合信息在眼睑幕中央（NightCurtain）。
  * 底部操作区 z-10，闭眼时被幕布（z-40）盖住 —— 只有 actor 看得到。
  */
 export function NightHud() {
@@ -46,6 +46,9 @@ export function NightHud() {
   const stepIdx = publicState.currentNightStep ?? 0
   const steps = buildNightSteps(publicState.settings.roles)
   const currentStepRole = steps[stepIdx] ?? null
+  // 非 actor 闭眼时顶栏隐藏，回合信息由眼睑幕中央显示（NightCurtain）
+  const isActor =
+    currentStepRole !== null && privateState?.originalRole === currentStepRole
   const request = privateState?.nightActionRequest ?? null
   const result = privateState?.nightActionResult ?? null
   const submitted = publicState.submittedPlayerIds.includes(playerId)
@@ -228,30 +231,32 @@ export function NightHud() {
 
   return (
     <>
-      {/* 顶栏：z-50，眼睑幕之上 */}
-      <header
-        className="pointer-events-none absolute inset-x-0 top-0 z-50 flex items-center justify-between px-5"
-        style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.75rem)" }}
-      >
-        <div className="flex items-center gap-2">
-          <Moon className="candle-flicker h-4 w-4 text-candle-500" strokeWidth={1.2} />
-          <div>
+      {/* 顶栏：仅 actor 睁眼时显示；阶段状态居中，避开左上角退出/解散按钮 */}
+      {isActor && (
+        <header
+          className="pointer-events-none absolute inset-x-0 top-0 z-50 flex items-center justify-end px-5"
+          style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.75rem)" }}
+        >
+          <div className="absolute inset-x-0 text-center">
             <p className="font-sans text-[0.6rem] uppercase tracking-[0.35em] text-candle-500/70">
               Night
             </p>
-            <h1 className="font-display text-lg text-moon-100/90">
+            <h1 className="flex items-center justify-center gap-1.5 font-display text-lg text-moon-100/90">
+              <Moon className="candle-flicker h-4 w-4 text-candle-500" strokeWidth={1.2} />
               {currentStepRole
                 ? `${ROLE_META[currentStepRole].displayName}请睁眼`
                 : "夜晚进行中"}
             </h1>
           </div>
-        </div>
-        <CountdownRing
-          endsAt={publicState.phaseEndsAt}
-          totalSeconds={publicState.settings.actionTime}
-          size={52}
-        />
-      </header>
+          <div className="relative">
+            <CountdownRing
+              endsAt={publicState.phaseEndsAt}
+              totalSeconds={publicState.settings.actionTime}
+              size={52}
+            />
+          </div>
+        </header>
+      )}
 
       {/* 底部操作区：z-10，闭眼时被幕布盖住 */}
       {bottom && (
