@@ -219,7 +219,8 @@ function handleHostCommand(ws: Socket, room: Room, data: Record<string, unknown>
 // 连接清理
 // ============================================================
 
-function detach(ws: Socket): void {
+/** quit=true 表示玩家主动退出（leave_room），区别于掉线（close） */
+function detach(ws: Socket, quit = false): void {
   const { roomId, playerId } = ws.data;
   if (!roomId || !playerId) return;
   ws.data.roomId = null;
@@ -239,11 +240,13 @@ function detach(ws: Socket): void {
       players: room.publicState.players.filter((p) => p.playerId !== playerId),
     };
   } else {
-    // 已开局：保留席位并标记离线，等他重连
+    // 已开局：保留席位并标记离线/已退出，等他重连
     room.publicState = {
       ...room.publicState,
       players: room.publicState.players.map((p) =>
-        p.playerId === playerId ? { ...p, isConnected: false } : p,
+        p.playerId === playerId
+          ? { ...p, isConnected: false, hasQuit: quit ? true : p.hasQuit }
+          : p,
       ),
     };
   }
@@ -315,7 +318,7 @@ const server = Bun.serve<SessionData>({
 
       switch (msg.type) {
         case "leave_room":
-          return detach(ws);
+          return detach(ws, true);
         case "player_action":
           return handlePlayerAction(ws, room, data);
         case "host_command":

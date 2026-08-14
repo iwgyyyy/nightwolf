@@ -36,6 +36,8 @@ export interface PlayerPublicInfo {
   playerId: string
   name: string
   isConnected: boolean
+  /** 对局中主动退出（与掉线区分显示）；重新加入时由服务端覆盖清除 */
+  hasQuit?: boolean
 }
 
 // ============================================================
