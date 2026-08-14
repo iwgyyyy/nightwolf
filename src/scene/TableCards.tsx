@@ -57,13 +57,3 @@ export function TableCards({ selectableIds, selectedId, onPick }: TableCardsProp
     </>
   )
 }
-
-/** 白天氛围光：晨光基调，比夜晚烛光亮一档，但仍保持围炉夜谈的暗调美术 */
-export function DaylightAmbience() {
-  return (
-    <>
-      <ambientLight intensity={0.35} color="#cdd3e8" />
-      <directionalLight position={[3, 6, 2]} intensity={1.1} color="#f2e4c0" />
-    </>
-  )
-}

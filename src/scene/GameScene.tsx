@@ -3,7 +3,7 @@ import { Canvas } from "@react-three/fiber"
 import type { PlayerPublicInfo } from "@/types"
 import { identiconColors } from "@/services/identicon"
 import { computeSeatPlacements } from "./seat-layout"
-import { NightEnvironment } from "./NightEnvironment"
+import { SceneEnvironment } from "./SceneEnvironment"
 import { Table, Candle } from "./Table"
 import { SeatFigure } from "./SeatFigure"
 import { CameraRig } from "./CameraRig"
@@ -17,6 +17,8 @@ export interface GameSceneProps {
   confirmedIds?: string[]
   /** 烛火是否点燃（白天熄灭，默认点燃） */
   candleLit?: boolean
+  /** 白天环境：破晓天空与晨光（白天/投票/结算阶段） */
+  daylight?: boolean
   /** 淡出所有头顶名牌（看牌/翻牌时让位给牌） */
   hideNameTags?: boolean
   /** 结算：被投出局的玩家，桌面名签带红色"出局"标记 */
@@ -35,6 +37,7 @@ export function GameScene({
   hostId,
   confirmedIds,
   candleLit = true,
+  daylight,
   hideNameTags,
   eliminatedIds,
   children,
@@ -52,7 +55,7 @@ export function GameScene({
         camera={{ fov: 50, position: [0, 1.8, 3], near: 0.1, far: 60 }}
         gl={{ antialias: true, powerPreference: "high-performance" }}
       >
-        <NightEnvironment />
+        <SceneEnvironment daylight={daylight} />
         <CameraRig />
         <Table />
         <Candle lit={candleLit} />

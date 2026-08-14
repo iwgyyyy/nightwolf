@@ -24,4 +24,6 @@ export const PALETTE = {
   hoodShadow: "#161a2c",
   moonGlow: "#e7ecf9",
   moonlight: "#a9b8dd",
+  dawnSky: "#6b7d9f",
+  dawnGround: "#2e3345",
 } as const

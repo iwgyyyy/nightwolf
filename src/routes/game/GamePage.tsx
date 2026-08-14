@@ -16,7 +16,7 @@ import { NightCurtainHost } from "@/components/game/NightCurtain"
 import { GameScene } from "@/scene/GameScene"
 import { DealingScene } from "@/scene/DealingScene"
 import { NightScene, NightTableLight } from "@/scene/NightScene"
-import { TableCards, DaylightAmbience } from "@/scene/TableCards"
+import { TableCards } from "@/scene/TableCards"
 import { VotingScene } from "@/scene/VotingScene"
 import { ResultScene } from "@/scene/ResultScene"
 import { LeaveRoomButton } from "@/components/LeaveRoomButton"
@@ -86,6 +86,7 @@ export default function GamePage() {
             : undefined
         }
         candleLit={phase === "dealing" || phase === "night"}
+        daylight={phase === "day" || phase === "voting" || phase === "result"}
         eliminatedIds={
           phase === "result"
             ? publicState.resultData?.eliminatedPlayerIds
@@ -107,9 +108,6 @@ export default function GamePage() {
             <NightScene />
             <NightTableLight />
           </>
-        )}
-        {(phase === "day" || phase === "voting" || phase === "result") && (
-          <DaylightAmbience />
         )}
         {phase === "day" && <TableCards />}
         {phase === "voting" && <VotingScene />}
