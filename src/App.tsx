@@ -3,7 +3,6 @@ import { BrowserRouter, Route, Routes } from "react-router"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import HomePage from "@/routes/home/HomePage"
-import DebugPage from "@/routes/debug/DebugPage"
 
 // three.js 体量大，含 3D 场景的路由按需加载，避免拖累首页首屏
 const LobbyPage = lazy(() => import("@/routes/lobby/LobbyPage"))
@@ -32,7 +31,6 @@ function App() {
               </Suspense>
             }
           />
-          <Route path="/debug" element={<DebugPage />} />
           <Route
             path="/debug/scene"
             element={
