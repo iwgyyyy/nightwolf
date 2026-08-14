@@ -2,10 +2,11 @@ import { useMemo, useRef } from "react"
 import { useFrame } from "@react-three/fiber"
 import { Billboard, Html } from "@react-three/drei"
 import { Check, Crown } from "lucide-react"
-import type { Group } from "three"
+import type { Group, MeshStandardMaterial } from "three"
 import { cn } from "@/lib/utils"
 import { SEAT_RADIUS, TABLE_TOP_Y, type SeatPlacement } from "./seat-layout"
-import { nameTexture } from "./cardTextures"
+import { nameTexture, SPEAKING_FRAMES, type VoiceBadge } from "./cardTextures"
+import { useVoiceUiStore } from "@/stores/voiceUiStore"
 import { PALETTE } from "./palette"
 
 interface SeatFigureProps {
@@ -50,10 +51,33 @@ export function SeatFigure({
     return (h >>> 0) % 628 / 100
   }, [placement.player.name])
 
+  const tagMat = useRef<MeshStandardMaterial>(null)
+
   useFrame(({ clock }) => {
-    if (!body.current) return
-    body.current.position.y =
-      Math.sin(clock.elapsedTime * 1.6 + breathPhase) * 0.012
+    if (body.current) {
+      body.current.position.y =
+        Math.sin(clock.elapsedTime * 1.6 + breathPhase) * 0.012
+    }
+    // 名签语音角标：直接从 store 读并按帧换贴图（不触发 React 渲染），
+    // speaking 的声波弧 3 帧循环形成"正在播放"的动画
+    const mat = tagMat.current
+    if (mat) {
+      const v = useVoiceUiStore.getState().peers[placement.player.playerId]
+      const badge: VoiceBadge = v?.speaking
+        ? "speaking"
+        : v?.micOn
+          ? "none"
+          : "muted"
+      const frame =
+        badge === "speaking"
+          ? Math.floor(clock.elapsedTime / 0.28) % SPEAKING_FRAMES
+          : 0
+      const tex = nameTexture(placement.player.name, eliminated, badge, frame)
+      if (mat.map !== tex) {
+        mat.map = tex
+        mat.emissiveMap = tex
+      }
+    }
   })
 
   const cloakColor = dimmed ? PALETTE.hoodShadow : PALETTE.cloak
@@ -93,9 +117,10 @@ export function SeatFigure({
           <mesh renderOrder={10}>
             <planeGeometry args={[0.8, 0.2]} />
             <meshStandardMaterial
-              map={nameTexture(placement.player.name, eliminated)}
+              ref={tagMat}
+              map={nameTexture(placement.player.name, eliminated, "muted")}
               emissive="#ffffff"
-              emissiveMap={nameTexture(placement.player.name, eliminated)}
+              emissiveMap={nameTexture(placement.player.name, eliminated, "muted")}
               emissiveIntensity={0.75}
               transparent
               depthTest={false}

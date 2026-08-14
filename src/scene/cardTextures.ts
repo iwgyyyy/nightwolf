@@ -200,10 +200,64 @@ export function cardFrontTexture(role: Role): CanvasTexture {
 const NAME_W = 512
 const NAME_H = 128
 
+/** 名签左侧的语音角标：闭麦 / 讲话中 / 无 */
+export type VoiceBadge = "none" | "muted" | "speaking"
+
+/** speaking 声波动画帧数（0 弧 → 1 弧 → 2 弧 循环） */
+export const SPEAKING_FRAMES = 3
+
+/** 麦克风小图标（约 52px 高），muted 加斜杠，speaking 按帧画声波弧 */
+function drawMicIcon(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  badge: Exclude<VoiceBadge, "none">,
+  frame: number,
+) {
+  const color =
+    badge === "speaking" ? "rgba(143,206,159,0.95)" : "rgba(186,192,212,0.7)"
+  ctx.save()
+  ctx.lineWidth = 6
+  ctx.lineCap = "round"
+  ctx.strokeStyle = color
+  ctx.fillStyle = color
+  // 咪头
+  ctx.beginPath()
+  ctx.roundRect(cx - 9, cy - 26, 18, 30, 9)
+  ctx.fill()
+  // 拾音碗
+  ctx.beginPath()
+  ctx.arc(cx, cy + 2, 16, 0, Math.PI)
+  ctx.stroke()
+  // 支杆
+  ctx.beginPath()
+  ctx.moveTo(cx, cy + 18)
+  ctx.lineTo(cx, cy + 26)
+  ctx.stroke()
+  if (badge === "muted") {
+    ctx.strokeStyle = "rgba(224,92,76,0.95)"
+    ctx.beginPath()
+    ctx.moveTo(cx - 20, cy - 26)
+    ctx.lineTo(cx + 20, cy + 26)
+    ctx.stroke()
+  } else {
+    // 声波弧按帧扩散：frame=0 无弧，1 一道，2 两道
+    const radii = [24, 34].slice(0, frame)
+    for (const r of radii) {
+      ctx.beginPath()
+      ctx.arc(cx - 2, cy - 2, r, -0.35 * Math.PI, 0.35 * Math.PI)
+      ctx.stroke()
+    }
+  }
+  ctx.restore()
+}
+
 function drawName(
   ctx: CanvasRenderingContext2D,
   name: string,
   eliminated: boolean,
+  voice: VoiceBadge,
+  frame: number,
 ) {
   ctx.clearRect(0, 0, NAME_W, NAME_H)
   // 微弱暗底提升可读性；刻意不做卡片状，避免与身份牌混淆。
@@ -217,30 +271,39 @@ function drawName(
   ctx.shadowOffsetY = 2
   ctx.font = `bold 64px ${FONT_STACK}`
   ctx.textBaseline = "middle"
-  const y = NAME_H / 2 + 2
-  if (!eliminated) {
-    ctx.textAlign = "center"
-    ctx.fillStyle = "rgba(243,244,250,0.92)"
-    ctx.fillText(name, NAME_W / 2, y, NAME_W - 180)
-    return
-  }
-  // 出局：名字后追加红色标记，整体居中
-  const suffix = " 出局"
   ctx.textAlign = "left"
+  const y = NAME_H / 2 + 2
+
+  // 组合排版：[语音角标] 名字 [红色"出局"后缀]，整体居中
+  const suffix = eliminated ? " 出局" : ""
+  const iconW = voice === "none" ? 0 : 68
   const nameW = Math.min(ctx.measureText(name).width, 240)
-  const suffixW = ctx.measureText(suffix).width
-  let x = (NAME_W - nameW - suffixW) / 2
+  const suffixW = suffix ? ctx.measureText(suffix).width : 0
+  let x = (NAME_W - iconW - nameW - suffixW) / 2
+  if (voice !== "none") {
+    drawMicIcon(ctx, x + 24, y, voice, frame)
+    x += iconW
+  }
   ctx.fillStyle = "rgba(243,244,250,0.92)"
   ctx.fillText(name, x, y, 240)
-  x += nameW
-  ctx.fillStyle = "rgba(224,92,76,0.95)"
-  ctx.fillText(suffix, x, y)
+  if (suffix) {
+    x += nameW
+    ctx.fillStyle = "rgba(224,92,76,0.95)"
+    ctx.fillText(suffix, x, y)
+  }
 }
 
-export function nameTexture(name: string, eliminated = false): CanvasTexture {
+export function nameTexture(
+  name: string,
+  eliminated = false,
+  voice: VoiceBadge = "none",
+  frame = 0,
+): CanvasTexture {
+  // 只有 speaking 有动画帧，其余归一为 0，避免缓存重复
+  const f = voice === "speaking" ? frame % SPEAKING_FRAMES : 0
   return getOrCreate(
-    `name:${eliminated ? "elim:" : ""}${name}`,
-    (ctx) => drawName(ctx, name, eliminated),
+    `name:${eliminated ? "elim:" : ""}${voice}:${f}:${name}`,
+    (ctx) => drawName(ctx, name, eliminated, voice, f),
     NAME_W,
     NAME_H,
   )

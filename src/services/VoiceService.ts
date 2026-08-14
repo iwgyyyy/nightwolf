@@ -21,6 +21,13 @@ type Unsubscribe = () => void
 type VoiceSignal =
   | { kind: "desc"; desc: RTCSessionDescriptionInit }
   | { kind: "ice"; candidate: RTCIceCandidateInit }
+  /** 麦克风开关状态广播（enabled=false 只是发静音帧，对端感知不到，需显式告知） */
+  | { kind: "mic"; on: boolean }
+
+/** inbound-rtp 音量高于该值视为在讲话；讲话判定在末次活跃后保持 600ms 防闪烁 */
+const SPEAKING_LEVEL = 0.02
+const SPEAKING_HOLD_MS = 600
+const LEVEL_POLL_MS = 250
 
 interface Peer {
   pc: RTCPeerConnection
@@ -49,6 +56,9 @@ export class VoiceService {
   private peers = new Map<string, Peer>()
   private unsubs: Unsubscribe[] = []
   private lastPhase: GamePhase | null = null
+  private levelTimer: ReturnType<typeof setInterval> | null = null
+  /** playerId → 最近一次检测到活跃音量的时间戳 */
+  private lastActiveAt = new Map<string, number>()
 
   /** 进入房间时调用；同房间重复调用是 no-op */
   join(roomId: string, selfId: string): void {
@@ -80,11 +90,17 @@ export class VoiceService {
       useGameStore.getState().publicState?.gamePhase ?? null,
       /* initial */ true,
     )
+    this.levelTimer = setInterval(() => void this.sampleLevels(), LEVEL_POLL_MS)
   }
 
   leave(): void {
     for (const unsub of this.unsubs) unsub()
     this.unsubs = []
+    if (this.levelTimer) {
+      clearInterval(this.levelTimer)
+      this.levelTimer = null
+    }
+    this.lastActiveAt.clear()
     for (const id of [...this.peers.keys()]) this.closePeer(id)
     if (this.stream) {
       for (const t of this.stream.getTracks()) t.stop()
@@ -119,6 +135,8 @@ export class VoiceService {
     if (!this.stream) return
     for (const t of this.stream.getAudioTracks()) t.enabled = on
     useVoiceUiStore.getState().set({ micOn: on })
+    // 告知所有对端，供"闭麦"角标展示
+    for (const id of this.peers.keys()) this.signal(id, { kind: "mic", on })
   }
 
   private async acquireMic(): Promise<void> {
@@ -244,6 +262,15 @@ export class VoiceService {
     pc.oniceconnectionstatechange = () => {
       if (pc.iceConnectionState === "failed") pc.restartIce()
     }
+    pc.onconnectionstatechange = () => {
+      // 连上后把自己的麦态同步给对方（对方中途加入/重连也能拿到）
+      if (pc.connectionState === "connected") {
+        this.signal(otherId, {
+          kind: "mic",
+          on: useVoiceUiStore.getState().micOn,
+        })
+      }
+    }
     return peer
   }
 
@@ -258,6 +285,8 @@ export class VoiceService {
     }
     peer.audio.srcObject = null
     peer.audio.remove()
+    this.lastActiveAt.delete(id)
+    useVoiceUiStore.getState().clearPeerVoice(id)
   }
 
   private signal(targetId: string, signal: VoiceSignal): void {
@@ -293,10 +322,37 @@ export class VoiceService {
         } catch (err) {
           if (!peer.ignoreOffer) throw err
         }
+      } else if (signal.kind === "mic") {
+        useVoiceUiStore.getState().setPeerVoice(fromId, { micOn: signal.on })
       }
     } catch {
       // 协商异常：关掉重来，syncPeers 会按在线列表重建
       this.closePeer(fromId)
+    }
+  }
+
+  /** 定时采样各对端入站音量 → speaking 标记（带保持时间防闪烁） */
+  private async sampleLevels(): Promise<void> {
+    const now = Date.now()
+    const ui = useVoiceUiStore.getState()
+    for (const [id, peer] of this.peers) {
+      if (peer.pc.connectionState !== "connected") continue
+      let level = 0
+      try {
+        const stats = await peer.pc.getStats()
+        stats.forEach((report) => {
+          const r = report as { type?: string; kind?: string; audioLevel?: number }
+          if (r.type === "inbound-rtp" && r.kind === "audio" && typeof r.audioLevel === "number") {
+            level = Math.max(level, r.audioLevel)
+          }
+        })
+      } catch {
+        continue
+      }
+      if (level > SPEAKING_LEVEL) this.lastActiveAt.set(id, now)
+      ui.setPeerVoice(id, {
+        speaking: now - (this.lastActiveAt.get(id) ?? 0) < SPEAKING_HOLD_MS,
+      })
     }
   }
 }
