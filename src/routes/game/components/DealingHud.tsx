@@ -94,7 +94,7 @@ export function DealingHud() {
                 </Button>
               ) : (
                 <Button
-                  className="candle-glow h-11 w-full max-w-xs font-display text-base tracking-wider"
+                  className="candle-glow h-11 w-full max-w-56 font-display text-base tracking-wider"
                   disabled={submitting}
                   onClick={handleConfirm}
                 >

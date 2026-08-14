@@ -77,7 +77,7 @@ export function DayHud() {
             <AlertDialogTrigger asChild>
               <Button
                 variant="outline"
-                className="h-11 w-full max-w-xs gap-2 font-display"
+                className="h-11 w-full max-w-56 gap-2 font-display"
                 disabled={ending}
               >
                 <SkipForward className="h-4 w-4" />
@@ -100,7 +100,7 @@ export function DayHud() {
           </AlertDialog>
         ) : (
           <p className="rounded-full bg-night-900/60 px-4 py-2 font-display text-sm text-moon-100/45 backdrop-blur-sm">
-            讨论结束或房主提前结束后进入投票
+            讨论结束后进入投票
           </p>
         )}
       </footer>

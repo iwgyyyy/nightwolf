@@ -105,7 +105,7 @@ export function VotingHud() {
               <AlertDialogTrigger asChild>
                 <Button
                   variant="outline"
-                  className="h-10 w-full max-w-xs gap-2 font-display"
+                  className="h-10 w-full max-w-56 gap-2 font-display"
                   disabled={submitting}
                 >
                   <Ban className="h-4 w-4" />

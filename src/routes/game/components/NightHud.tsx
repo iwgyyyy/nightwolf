@@ -100,7 +100,7 @@ export function NightHud() {
             />
             {centers.length === 2 && (
               <Button
-                className="candle-glow h-11 w-full max-w-xs font-display"
+                className="candle-glow h-11 w-full max-w-56 font-display"
                 onClick={() => useNightUiStore.getState().confirmSelection()}
               >
                 翻看这两张底牌
@@ -122,7 +122,7 @@ export function NightHud() {
             />
             {selected.length === 2 && (
               <Button
-                className="candle-glow h-11 w-full max-w-xs font-display"
+                className="candle-glow h-11 w-full max-w-56 font-display"
                 onClick={() => useNightUiStore.getState().confirmSelection()}
               >
                 交换
@@ -143,7 +143,7 @@ export function NightHud() {
             <Hint text="你是唯一的狼人，可以偷看一张中央底牌" />
             <Button
               variant="outline"
-              className="h-10 w-full max-w-xs font-display"
+              className="h-10 w-full max-w-56 font-display"
               disabled={submitting}
               onClick={() => submitDirect({ kind: "loneWerewolfSkip" })}
             >
@@ -161,7 +161,7 @@ export function NightHud() {
   } else if (stage === "revealing") {
     bottom = (
       <Button
-        className="candle-glow h-11 w-full max-w-xs gap-2 font-display"
+        className="candle-glow h-11 w-full max-w-56 gap-2 font-display"
         onClick={() => useNightUiStore.getState().finishReveal()}
       >
         <Check className="h-4 w-4" />
@@ -243,7 +243,7 @@ function HintWithButton({
     <div className="flex w-full flex-col items-center gap-2">
       <Hint text={hint} />
       <Button
-        className="candle-glow h-11 w-full max-w-xs gap-2 font-display"
+        className="candle-glow h-11 w-full max-w-56 gap-2 font-display"
         disabled={disabled}
         onClick={onClick}
       >

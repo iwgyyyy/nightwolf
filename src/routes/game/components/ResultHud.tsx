@@ -130,7 +130,7 @@ export function ResultHud() {
       >
         <Button
           variant="outline"
-          className="h-11 w-full max-w-xs gap-2 font-display"
+          className="h-11 w-full max-w-56 gap-2 font-display"
           onClick={() => setDetailOpen(true)}
         >
           <ScrollText className="h-4 w-4" />
@@ -138,7 +138,7 @@ export function ResultHud() {
         </Button>
         {isHost ? (
           <Button
-            className="candle-glow h-11 w-full max-w-xs gap-2 font-display"
+            className="candle-glow h-11 w-full max-w-56 gap-2 font-display"
             onClick={handlePlayAgain}
             disabled={resetting}
           >
