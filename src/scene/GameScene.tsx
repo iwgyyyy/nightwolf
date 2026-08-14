@@ -21,6 +21,8 @@ export interface GameSceneProps {
   daylight?: boolean
   /** 淡出所有头顶名牌（看牌/翻牌时让位给牌） */
   hideNameTags?: boolean
+  /** 隐藏桌面名签（举牌到眼前时让位，名签不做深度测试会画在牌上） */
+  hideTableTags?: boolean
   /** 结算：被投出局的玩家，桌面名签带红色"出局"标记 */
   eliminatedIds?: string[]
   /** 阶段相关的场景内容（牌、手等）由各阶段插入 */
@@ -39,6 +41,7 @@ export function GameScene({
   candleLit = true,
   daylight,
   hideNameTags,
+  hideTableTags,
   eliminatedIds,
   children,
 }: GameSceneProps) {
@@ -71,6 +74,7 @@ export function GameScene({
               quit={p.player.hasQuit}
               confirmed={confirmedIds?.includes(p.player.playerId)}
               hideTag={hideNameTags}
+              hideTableTag={hideTableTags}
               eliminated={eliminatedIds?.includes(p.player.playerId)}
             />
           ))}

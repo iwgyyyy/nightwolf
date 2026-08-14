@@ -206,11 +206,15 @@ function drawName(
   eliminated: boolean,
 ) {
   ctx.clearRect(0, 0, NAME_W, NAME_H)
-  // 微弱暗底提升可读性；刻意不做卡片状，避免与身份牌混淆
+  // 微弱暗底提升可读性；刻意不做卡片状，避免与身份牌混淆。
+  // 名签会叠在翻开的亮色牌面上，底板要够透明、靠文字阴影保对比
   ctx.beginPath()
   ctx.roundRect(72, 18, NAME_W - 144, NAME_H - 36, 46)
-  ctx.fillStyle = "rgba(8,10,22,0.42)"
+  ctx.fillStyle = "rgba(8,10,22,0.22)"
   ctx.fill()
+  ctx.shadowColor = "rgba(6,8,18,0.9)"
+  ctx.shadowBlur = 12
+  ctx.shadowOffsetY = 2
   ctx.font = `bold 64px ${FONT_STACK}`
   ctx.textBaseline = "middle"
   const y = NAME_H / 2 + 2
@@ -250,8 +254,11 @@ export function selfEliminatedTexture(): CanvasTexture {
       ctx.clearRect(0, 0, NAME_W, NAME_H)
       ctx.beginPath()
       ctx.roundRect(72, 18, NAME_W - 144, NAME_H - 36, 46)
-      ctx.fillStyle = "rgba(8,10,22,0.42)"
+      ctx.fillStyle = "rgba(8,10,22,0.22)"
       ctx.fill()
+      ctx.shadowColor = "rgba(6,8,18,0.9)"
+      ctx.shadowBlur = 12
+      ctx.shadowOffsetY = 2
       ctx.font = `bold 64px ${FONT_STACK}`
       ctx.textAlign = "center"
       ctx.textBaseline = "middle"

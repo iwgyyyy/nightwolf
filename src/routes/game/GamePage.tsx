@@ -101,6 +101,12 @@ export default function GamePage() {
             (nightStage === "acting" || nightStage === "revealing")) ||
           phase === "result"
         }
+        hideTableTags={
+          // 名签不做深度测试、永远叠在场景上层，举牌到眼前的窗口要隐藏让位
+          (phase === "dealing" &&
+            (peekStage === "picking" || peekStage === "holding")) ||
+          (phase === "night" && nightStage === "revealing")
+        }
       >
         {phase === "dealing" && <DealingScene />}
         {phase === "night" && (

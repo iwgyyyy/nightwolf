@@ -21,6 +21,8 @@ interface SeatFigureProps {
   confirmed?: boolean
   /** 淡出头顶 DOM 名牌（看牌/翻牌时它会盖在牌上层；桌面名签仍在） */
   hideTag?: boolean
+  /** 隐藏桌面名签（举牌到眼前时它 depthTest=false 会画在牌上面） */
+  hideTableTag?: boolean
   /** 结算：被投出局，桌面名签名字后加红色"出局" */
   eliminated?: boolean
 }
@@ -37,6 +39,7 @@ export function SeatFigure({
   quit,
   confirmed,
   hideTag,
+  hideTableTag,
   eliminated,
 }: SeatFigureProps) {
   const body = useRef<Group>(null)
@@ -81,21 +84,26 @@ export function SeatFigure({
         </mesh>
       </group>
 
-      {/* 桌面名签：立在他面前身份牌外侧的桌沿（局部 +z 朝桌心），
-          全阶段常显；billboard 面向相机，侧座也可读 */}
-      <Billboard position={[0, TABLE_TOP_Y + 0.08, SEAT_RADIUS - 1.31]}>
-        <mesh>
-          <planeGeometry args={[0.8, 0.2]} />
-          <meshStandardMaterial
-            map={nameTexture(placement.player.name, eliminated)}
-            emissive="#ffffff"
-            emissiveMap={nameTexture(placement.player.name, eliminated)}
-            emissiveIntensity={0.75}
-            transparent
-            roughness={1}
-          />
-        </mesh>
-      </Billboard>
+      {/* 桌面名签：立在他面前身份牌外侧的桌沿（局部 +z 朝桌心）。
+          depthTest 关闭 + renderOrder 靠后：名签作为独立一层叠在场景之上，
+          不与桌面的牌做深度相交（billboard 俯视时的后仰会切进翻开的牌）；
+          举牌到眼前的窗口由 hideTableTag 隐藏让位 */}
+      {!hideTableTag && (
+        <Billboard position={[0, TABLE_TOP_Y + 0.08, SEAT_RADIUS - 1.31]}>
+          <mesh renderOrder={10}>
+            <planeGeometry args={[0.8, 0.2]} />
+            <meshStandardMaterial
+              map={nameTexture(placement.player.name, eliminated)}
+              emissive="#ffffff"
+              emissiveMap={nameTexture(placement.player.name, eliminated)}
+              emissiveIntensity={0.75}
+              transparent
+              depthTest={false}
+              roughness={1}
+            />
+          </mesh>
+        </Billboard>
+      )}
 
       {/* 名牌（固定屏幕尺寸；zIndexRange 压到眼睑幕 z-40 之下，闭眼时不穿帮；
           DOM 永远盖在 canvas 上，看牌时靠淡出让位给牌） */}

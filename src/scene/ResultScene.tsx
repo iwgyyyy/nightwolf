@@ -113,10 +113,11 @@ export function ResultScene() {
           在自己牌下方的桌沿（与其他名签同半径）显示"你出局了" */}
       {playerId && result.eliminatedPlayerIds.includes(playerId) && (
         <Billboard position={[0, TABLE_TOP_Y + 0.08, 1.31]}>
-          <mesh>
+          <mesh renderOrder={10}>
             <planeGeometry args={[0.8, 0.2]} />
             <meshStandardMaterial
               map={selfEliminatedTexture()}
+              depthTest={false}
               emissive="#ffffff"
               emissiveMap={selfEliminatedTexture()}
               emissiveIntensity={0.75}
