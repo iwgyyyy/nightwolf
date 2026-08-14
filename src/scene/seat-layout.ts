@@ -10,7 +10,9 @@ export const SEAT_RADIUS = 1.8
 /** 每个座位面前身份牌所在的半径 */
 export const CARD_RING_RADIUS = TABLE_RADIUS * 0.72
 /** 牌面略高于桌面，避免 z-fighting */
-export const CARD_Y = TABLE_TOP_Y + 0.004
+// 高于毡面（TABLE_TOP_Y+0.001）足够多：牌下的光圈/边框平面（最低 -0.005）
+// 也要留出深度余量，否则与桌面共面 z-fighting 闪烁
+export const CARD_Y = TABLE_TOP_Y + 0.012
 
 export interface SeatPlacement {
   player: PlayerPublicInfo

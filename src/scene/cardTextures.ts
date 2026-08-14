@@ -20,10 +20,13 @@ const TEAM_COLOR: Record<Team, string> = {
 
 const FONT_STACK = `"LXGW WenKai Screen", "Source Han Serif SC", serif`
 
-function makeCanvas(): [HTMLCanvasElement, CanvasRenderingContext2D] {
+function makeCanvas(
+  w = W,
+  h = H,
+): [HTMLCanvasElement, CanvasRenderingContext2D] {
   const canvas = document.createElement("canvas")
-  canvas.width = W
-  canvas.height = H
+  canvas.width = w
+  canvas.height = h
   const ctx = canvas.getContext("2d")!
   return [canvas, ctx]
 }
@@ -148,11 +151,16 @@ function hookFonts() {
   })
 }
 
-function getOrCreate(key: string, draw: (ctx: CanvasRenderingContext2D) => void): CanvasTexture {
+function getOrCreate(
+  key: string,
+  draw: (ctx: CanvasRenderingContext2D) => void,
+  w = W,
+  h = H,
+): CanvasTexture {
   const existing = cache.get(key)
   if (existing) return existing.texture
   hookFonts()
-  const [canvas, ctx] = makeCanvas()
+  const [canvas, ctx] = makeCanvas(w, h)
   draw(ctx)
   const texture = new CanvasTexture(canvas)
   texture.colorSpace = SRGBColorSpace
@@ -176,4 +184,29 @@ export function cardBackTexture(): CanvasTexture {
 
 export function cardFrontTexture(role: Role): CanvasTexture {
   return getOrCreate(`front:${role}`, (ctx) => drawFront(ctx, role))
+}
+
+// ============================================================
+// 桌面名签：玩家名字贴在他面前的桌沿，全阶段常显
+// ============================================================
+
+const NAME_W = 512
+const NAME_H = 128
+
+function drawName(ctx: CanvasRenderingContext2D, name: string) {
+  ctx.clearRect(0, 0, NAME_W, NAME_H)
+  // 微弱暗底提升可读性；刻意不做卡片状，避免与身份牌混淆
+  ctx.beginPath()
+  ctx.roundRect(96, 22, NAME_W - 192, NAME_H - 44, 42)
+  ctx.fillStyle = "rgba(8,10,22,0.42)"
+  ctx.fill()
+  ctx.font = `bold 56px ${FONT_STACK}`
+  ctx.textAlign = "center"
+  ctx.textBaseline = "middle"
+  ctx.fillStyle = "rgba(243,244,250,0.92)"
+  ctx.fillText(name, NAME_W / 2, NAME_H / 2 + 2, NAME_W - 220)
+}
+
+export function nameTexture(name: string): CanvasTexture {
+  return getOrCreate(`name:${name}`, (ctx) => drawName(ctx, name), NAME_W, NAME_H)
 }

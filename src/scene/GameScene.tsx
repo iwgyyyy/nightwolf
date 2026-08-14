@@ -36,7 +36,8 @@ export function GameScene({
   )
 
   return (
-    <div className="absolute inset-0">
+    // touch-none：触摸拖动环视时不让浏览器接管为滚动手势
+    <div className="absolute inset-0 touch-none">
       <Canvas
         dpr={[1, 2]}
         camera={{ fov: 50, position: [0, 1.8, 3], near: 0.1, far: 60 }}
@@ -55,6 +56,7 @@ export function GameScene({
               accentColor={identiconColors(p.player.name).fg}
               isHost={p.player.playerId === hostId}
               dimmed={!p.player.isConnected}
+              quit={p.player.hasQuit}
               confirmed={confirmedIds?.includes(p.player.playerId)}
             />
           ))}

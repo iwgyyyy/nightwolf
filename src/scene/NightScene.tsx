@@ -388,11 +388,11 @@ export function NightScene() {
           entry.current.quaternion.copy(camera.quaternion).multiply(QX)
         }
       } else if (plan.reveal === "eye" && plan.eyeCardId) {
-        // 举到眼前（同发牌阶段）
+        // 举到眼前（同发牌阶段，抬高避开底部面板）
         const landscape = size.width > size.height
         right.crossVectors(dir, camera.up).normalize()
-        pos.copy(camera.position).addScaledVector(dir, landscape ? 1.25 : 0.85)
-        pos.y -= landscape ? 0 : 0.1
+        pos.copy(camera.position).addScaledVector(dir, landscape ? 1.25 : 0.78)
+        pos.y += 0.08
         const entry = getPose(plan.eyeCardId)
         if (!entry.current) {
           entry.current = { position: new Vector3(), quaternion: new Quaternion() }
@@ -486,10 +486,8 @@ export function NightScene() {
           rotationY={c.rotationY}
           role={revealedRole(c.id)}
           poseRef={getPose(c.id)}
-          highlighted={
-            stage === "selecting" &&
-            (selected.includes(c.id) || selectableIds.has(c.id))
-          }
+          highlighted={stage === "selecting" && selectableIds.has(c.id)}
+          selected={stage === "selecting" && selected.includes(c.id)}
           onClick={(e) => {
             e.stopPropagation()
             handleCardClick(c.id)
@@ -539,13 +537,14 @@ export function NightScene() {
           <Html
             position={[
               card.position[0],
-              card.position[1] + 0.35,
+              card.position[1] + 0.5,
               card.position[2],
             ]}
             center
             zIndexRange={[35, 0]}
           >
-            <div className="flex items-center gap-2 rounded-full border border-moon-100/15 bg-night-900/85 py-1.5 pr-1.5 pl-3 whitespace-nowrap backdrop-blur-sm">
+            {/* candle 描边 + 底部小箭头，与选中卡牌的亮边框呼应 */}
+            <div className="relative flex items-center gap-2 rounded-full border border-candle-500/50 bg-night-900/90 py-1.5 pr-1.5 pl-3 whitespace-nowrap shadow-lg backdrop-blur-sm">
               <span className="font-display text-sm text-moon-100/90">
                 {bubbleTarget.label}
               </span>
@@ -564,6 +563,10 @@ export function NightScene() {
               >
                 取消
               </Button>
+              <span
+                aria-hidden
+                className="absolute top-full left-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-r border-b border-candle-500/50 bg-night-900/90"
+              />
             </div>
           </Html>
         )

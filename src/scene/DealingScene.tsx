@@ -70,13 +70,13 @@ export function DealingScene() {
       cardPose.current = null
       if (elapsed > REACH_SEC) store.setPeekStage("holding")
     } else if (stage === "holding") {
-      // 牌举到眼前，正对相机。横屏画幅矮，举远一点避免和底部说明面板重叠
+      // 牌举到眼前，正对相机。横屏画幅矮，举远一点；整体抬高避开底部说明面板
       const { dir, pos, right } = tmp.current
       const landscape = size.width > size.height
       camera.getWorldDirection(dir)
       right.crossVectors(dir, camera.up).normalize()
-      pos.copy(camera.position).addScaledVector(dir, landscape ? 1.25 : 0.85)
-      pos.y -= landscape ? 0 : 0.1
+      pos.copy(camera.position).addScaledVector(dir, landscape ? 1.25 : 0.78)
+      pos.y += 0.08
       if (!cardPose.current) {
         cardPose.current = {
           position: new Vector3(),

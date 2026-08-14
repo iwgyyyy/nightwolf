@@ -1,10 +1,11 @@
 import { useMemo, useRef } from "react"
 import { useFrame } from "@react-three/fiber"
-import { Html } from "@react-three/drei"
+import { Billboard, Html } from "@react-three/drei"
 import { Check, Crown } from "lucide-react"
 import type { Group } from "three"
 import { cn } from "@/lib/utils"
-import type { SeatPlacement } from "./seat-layout"
+import { SEAT_RADIUS, TABLE_TOP_Y, type SeatPlacement } from "./seat-layout"
+import { nameTexture } from "./cardTextures"
 import { PALETTE } from "./palette"
 
 interface SeatFigureProps {
@@ -14,6 +15,8 @@ interface SeatFigureProps {
   isHost?: boolean
   /** 断线：人影压暗 */
   dimmed?: boolean
+  /** 主动退出房间（与掉线区分显示） */
+  quit?: boolean
   /** 本阶段已提交（发牌确认/夜晚行动等），名牌显示对勾 */
   confirmed?: boolean
 }
@@ -27,6 +30,7 @@ export function SeatFigure({
   accentColor,
   isHost,
   dimmed,
+  quit,
   confirmed,
 }: SeatFigureProps) {
   const body = useRef<Group>(null)
@@ -71,6 +75,22 @@ export function SeatFigure({
         </mesh>
       </group>
 
+      {/* 桌面名签：立在他面前身份牌外侧的桌沿（局部 +z 朝桌心），
+          全阶段常显；billboard 面向相机，侧座也可读 */}
+      <Billboard position={[0, TABLE_TOP_Y + 0.08, SEAT_RADIUS - 1.31]}>
+        <mesh>
+          <planeGeometry args={[0.72, 0.18]} />
+          <meshStandardMaterial
+            map={nameTexture(placement.player.name)}
+            emissive="#ffffff"
+            emissiveMap={nameTexture(placement.player.name)}
+            emissiveIntensity={0.75}
+            transparent
+            roughness={1}
+          />
+        </mesh>
+      </Billboard>
+
       {/* 名牌（固定屏幕尺寸；zIndexRange 压到眼睑幕 z-40 之下，闭眼时不穿帮） */}
       <Html
         position={[0, 1.62, 0]}
@@ -88,9 +108,11 @@ export function SeatFigure({
           <span className="font-display text-xs text-moon-100/85">
             {placement.player.name}
           </span>
-          {dimmed && (
+          {quit ? (
+            <span className="text-[10px] text-blood-500/70">已退出</span>
+          ) : dimmed ? (
             <span className="text-[10px] text-moon-100/40">离线</span>
-          )}
+          ) : null}
           {confirmed && <Check className="h-3 w-3 text-sage-500" />}
         </div>
       </Html>

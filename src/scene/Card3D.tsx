@@ -1,6 +1,12 @@
 import { useMemo, useRef } from "react"
 import { useFrame, type ThreeEvent } from "@react-three/fiber"
-import { Euler, Quaternion, Vector3, type Group } from "three"
+import {
+  Euler,
+  Quaternion,
+  Vector3,
+  type Group,
+  type MeshStandardMaterial,
+} from "three"
 import type { Role } from "@/types"
 import { cardBackTexture, cardFrontTexture } from "./cardTextures"
 import { bezier2, clamp01, easeOutCubic } from "./animation"
@@ -29,7 +35,10 @@ interface Card3DProps {
   /** 实时姿态目标（own card 翻看等），由父级 useFrame 改写 */
   poseRef?: React.RefObject<CardPoseTarget | null>
   onClick?: (e: ThreeEvent<MouseEvent>) => void
+  /** 可选中提示（淡光圈） */
   highlighted?: boolean
+  /** 已选中：牌本体抬起、微放大、牌背亮起呼吸暖光（盖过 highlighted） */
+  selected?: boolean
 }
 
 /**
@@ -45,9 +54,12 @@ export function Card3D({
   poseRef,
   onClick,
   highlighted,
+  selected,
 }: Card3DProps) {
   const group = useRef<Group>(null)
   const anim = useRef({ dealStart: null as number | null, dealt: !dealFrom })
+  const backMat = useRef<MeshStandardMaterial>(null)
+  const liftTarget = useRef(new Vector3())
 
   const backTex = cardBackTexture()
   const frontTex = role ? cardFrontTexture(role) : cardBackTexture()
@@ -91,8 +103,22 @@ export function Card3D({
     // 姿态跟随（翻看/放回等由父级改写 poseRef）
     const target = poseRef?.current ?? resting
     const k = 1 - Math.exp(-dt * 9)
-    g.position.lerp(target.position, k)
+    // 选中态：牌本体从桌面抬起一点（仅 resting 时，举牌/交换动画不叠加）
+    const lift = selected && !poseRef?.current ? 0.07 : 0
+    liftTarget.current.copy(target.position)
+    liftTarget.current.y += lift
+    g.position.lerp(liftTarget.current, k)
     g.quaternion.slerp(target.quaternion, k)
+    // 选中态：微放大 + 牌背暖光呼吸
+    const s = selected ? 1.06 : 1
+    g.scale.setScalar(g.scale.x + (s - g.scale.x) * k)
+    if (backMat.current) {
+      const glow = selected
+        ? 0.85 + 0.18 * Math.sin(clock.elapsedTime * 4)
+        : 0.38
+      backMat.current.emissiveIntensity +=
+        (glow - backMat.current.emissiveIntensity) * k
+    }
   })
 
   return (
@@ -103,8 +129,8 @@ export function Card3D({
       visible={!dealFrom}
       onClick={onClick}
     >
-      {/* 选中光圈 */}
-      {highlighted && (
+      {/* 可选提示：淡光圈 */}
+      {highlighted && !selected && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.004, 0]}>
           <planeGeometry args={[CARD_W + 0.08, CARD_H + 0.08]} />
           <meshBasicMaterial
@@ -114,10 +140,11 @@ export function Card3D({
           />
         </mesh>
       )}
-      {/* 牌背（扣放时朝上）。emissive 让牌在夜色里保持可读 */}
+      {/* 牌背（扣放时朝上）。emissive 让牌在夜色里保持可读；选中时亮起 */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.002, 0]}>
         <planeGeometry args={[CARD_W, CARD_H]} />
         <meshStandardMaterial
+          ref={backMat}
           map={backTex}
           emissive="#ffffff"
           emissiveMap={backTex}
