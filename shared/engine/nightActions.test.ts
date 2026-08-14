@@ -7,6 +7,7 @@ function makeState(overrides: Partial<HostGameState> = {}): HostGameState {
     allPlayerRoles: {},
     originalRoles: {},
     centerCards: ["villager", "villager", "villager"],
+    initialCenterCards: ["villager", "villager", "villager"],
     nightActions: [],
     nightStepIndex: 0,
     playerActionStatus: {},
@@ -16,6 +17,10 @@ function makeState(overrides: Partial<HostGameState> = {}): HostGameState {
   // 若没指定 originalRoles，默认和当前身份一致（多数测试用例下合理）
   if (!overrides.originalRoles) {
     merged.originalRoles = { ...merged.allPlayerRoles }
+  }
+  // 若没显式给初始底牌，与当前底牌保持一致
+  if (!overrides.initialCenterCards && overrides.centerCards) {
+    merged.initialCenterCards = [...overrides.centerCards]
   }
   return merged
 }

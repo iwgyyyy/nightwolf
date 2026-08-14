@@ -17,12 +17,15 @@ import { buildNightSteps } from "./nightOrder"
 
 /**
  * 取本局夜晚步骤列表（按固定顺序，过滤本局未配置的角色）。
- * 基于"配置的角色池" = 玩家手牌 + 桌面牌，而非仅玩家抽到的角色。
+ * 基于"配置的角色池" = 玩家初始手牌 + **初始**桌面牌。
+ * 必须用初始底牌：酒鬼换牌会改 centerCards，若据此计算，步骤列表
+ * 会中途缩短/错位（吞掉失眠者等靠后步骤，且泄露酒鬼摸了哪张牌），
+ * 也会和客户端 buildNightSteps(settings.roles) 的步骤索引对不上。
  */
 export function nightStepsFor(hostState: HostGameState): Role[] {
   return buildNightSteps([
     ...Object.values(hostState.originalRoles),
-    ...hostState.centerCards,
+    ...hostState.initialCenterCards,
   ])
 }
 

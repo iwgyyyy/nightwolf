@@ -107,6 +107,7 @@ export function buildStartGameStates(
     allPlayerRoles: { ...playerRoles },
     originalRoles: { ...playerRoles },
     centerCards: [...centerCards],
+    initialCenterCards: [...centerCards],
     nightActions: [],
     nightStepIndex: 0,
     playerActionStatus: Object.fromEntries(

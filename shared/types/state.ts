@@ -149,6 +149,13 @@ export interface HostGameState {
   originalRoles: Record<string, Role>
   /** 3 张桌面牌（会被酒鬼修改） */
   centerCards: Role[]
+  /**
+   * 发牌时的**初始**桌面牌（永不修改）。
+   * 夜晚步骤列表必须基于初始牌池（originalRoles + 初始底牌）计算：
+   * 若用被酒鬼换过的 centerCards，步骤会缩短/错位——既吞掉排序靠后
+   * 角色（如失眠者）的行动，也从"步骤消失"泄露酒鬼摸走了哪张牌。
+   */
+  initialCenterCards: Role[]
   /** 完整夜晚操作日志 */
   nightActions: NightAction[]
   /** 当前夜晚进行到第几步（buildNightSteps 的下标） */

@@ -14,10 +14,16 @@ import type {
 } from "../types"
 
 function makeHost(overrides: Partial<HostGameState> = {}): HostGameState {
+  const centerCards = overrides.centerCards ?? [
+    "villager",
+    "villager",
+    "villager",
+  ]
   return {
     allPlayerRoles: {},
     originalRoles: {},
-    centerCards: ["villager", "villager", "villager"],
+    centerCards,
+    initialCenterCards: [...centerCards],
     nightActions: [],
     nightStepIndex: 0,
     playerActionStatus: {},
@@ -111,6 +117,24 @@ describe("nightStepsFor", () => {
       },
     })
     expect(nightStepsFor(host)).toEqual(ROLES)
+  })
+
+  it("酒鬼换牌改变 centerCards 后步骤列表不变（回归：失眠者步骤曾被吞掉）", () => {
+    // 初始：失眠者在底牌；酒鬼把它摸走后 centerCards 里不再有 insomniac
+    const host = makeHost({
+      originalRoles: { p1: "werewolf", p2: "drunk", p3: "troublemaker" },
+      initialCenterCards: ["seer", "robber", "insomniac"],
+      // 酒鬼与 center_2 交换后的现状
+      centerCards: ["seer", "robber", "drunk"],
+    })
+    expect(nightStepsFor(host)).toEqual([
+      "werewolf",
+      "seer",
+      "robber",
+      "troublemaker",
+      "drunk",
+      "insomniac",
+    ])
   })
 })
 
