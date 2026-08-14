@@ -43,8 +43,8 @@ export function MicButton() {
 
   return (
     <div
-      className="fixed right-3 z-30"
-      style={{ bottom: "calc(env(safe-area-inset-bottom) + 0.9rem)" }}
+      // 手机竖屏底部中间有操作按钮，窄屏时上移两个自身高度（6rem）避开；PC 保持低位
+      className="fixed right-3 z-30 bottom-[calc(env(safe-area-inset-bottom)+0.9rem)] max-sm:bottom-[calc(env(safe-area-inset-bottom)+6.9rem)]"
     >
       <Button
         size="icon"
