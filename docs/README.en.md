@@ -4,22 +4,23 @@ A multiplayer web port of *One Night Ultimate Werewolf*, wrapped in a "Moonlit V
 
 > 🌐 [中文版 README](../README.md)
 
-![tech stack](https://img.shields.io/badge/Vite-8-646cff) ![tech stack](https://img.shields.io/badge/React-19-61dafb) ![tech stack](https://img.shields.io/badge/TypeScript-6-3178c6) ![tech stack](https://img.shields.io/badge/Tailwind-4-06b6d4)
+![tech stack](https://img.shields.io/badge/Vite-8-646cff) ![tech stack](https://img.shields.io/badge/React-19-61dafb) ![tech stack](https://img.shields.io/badge/TypeScript-6-3178c6) ![tech stack](https://img.shields.io/badge/three.js-r185-000000) ![tech stack](https://img.shields.io/badge/Tailwind-4-06b6d4)
 
-> [!IMPORTANT]
-> **Voice chat between players is NOT included.** Use your own VoIP tool (WeChat voice call, Discord, QQ, Tencent Meeting, etc.) for the daytime discussion phase. This project only handles game state sync and rule enforcement.
+> [!NOTE]
+> **In-room voice chat is built in** (self-hosted LiveKit SFU): connects automatically when you enter a room, free discussion at day, force-muted at night. No third-party VoIP needed.
 >
-> The built-in "Everyone close your eyes / Werewolves, wake up" narration uses the browser's native Web Speech API for local playback. It may be silent on **iOS WeChat built-in browser, some Android devices without a Chinese TTS engine, or when the device is muted** — this is a browser limitation and does not affect gameplay (the on-screen role title and table cues guide the flow just the same).
+> The "close your eyes / werewolves, wake up" narration uses recorded voice lines (falling back to browser TTS when missing). It may be silent on iOS WeChat built-in browser or muted devices — this does not affect gameplay (on-screen role titles guide the flow just the same).
 
 ## Highlights
 
 - **Full One Night Ultimate Werewolf ruleset** — 10 roles: Werewolf, Minion, Seer, Robber, Troublemaker, Drunk, Insomniac, Hunter, Tanner, Villager
-- **Immersive round-table night phase** — all players seated around the circle; floating + dimming mask while eyes are closed; full animations for swaps and peeks
-- **Voice narration** — each device plays "{Role}, wake up / close your eyes" locally via Web Speech API
-- **Admin-gated rooms** — creating a room requires credentials; join via a shareable link
-- **Cross-device sync** — WebSocket relay keeps state consistent, with automatic reconnect + host-disconnect pause/resume
-- **Responsive** — dedicated desktop and mobile layouts; table size and interactions adapt
-- **PWA** — "Add to Home Screen" supported
+- **3D round table** — a moonlit village tabletop rendered in real time with three.js; peeks, swaps, and reveals are fully animated in 3D
+- **Built-in room voice** — LiveKit SFU architecture (10-player rooms are easy); phase-linked rules — auto-mute at nightfall, auto-unmute at dawn; name tags show live speaking waves / muted badges
+- **Voice narration** — recorded "{Role}, wake up / close your eyes" lines; the server sends cues, each device plays locally
+- **Server-authoritative** — dealing, night resolution, and vote tallying all run server-side; each client only receives the projection it is allowed to see — F12 won't reveal any cards
+- **Admin-gated rooms** — creating a room requires credentials (server-side check + HMAC token); join via a shareable link
+- **Disconnect recovery** — WebSocket auto-reconnect; host disconnect pauses the room, reconnect resumes
+- **Responsive + PWA** — dedicated desktop and mobile layouts; "Add to Home Screen" supported
 
 ## Tech stack
 
@@ -27,94 +28,70 @@ A multiplayer web port of *One Night Ultimate Werewolf*, wrapped in a "Moonlit V
 |-------|-------|
 | Build | Vite 8 + Bun |
 | UI | React 19 (React Compiler enabled) + Tailwind CSS v4 + shadcn/ui |
-| State | Zustand + Immer + use-immer |
-| Animation | Framer Motion + CSS 3D transform |
+| 3D | three.js + @react-three/fiber + drei |
+| State | Zustand + Immer |
+| Animation | Motion (Framer Motion) + R3F frame loop |
 | Routing | React Router v7 (SPA mode) |
-| Forms | react-hook-form + zod + Field |
-| Sync | WebSocket (prod) / BroadcastChannel (same-browser multi-tab dev) |
-| Backend | Node.js + `ws`, deployed as a CloudBase HTTP Function |
-| Tests | Vitest (92 unit tests covering engine + sync) |
+| Voice | LiveKit (self-hosted SFU) + coturn (fallback for UDP-restricted networks) |
+| Sync | WebSocket, server-authoritative projected state |
+| Backend | Bun running TypeScript natively, single Docker container, Caddy for TLS |
+| Tests | Vitest (covering the game engine and sync layer) |
 
 ## Getting started
+
+### Backend (start first)
+
+```bash
+cd server
+bun install
+cp .env.example .env    # set ADMIN_USERNAME / ADMIN_PASSWORD
+bun run dev             # ws://localhost:9000
+```
 
 ### Frontend
 
 ```bash
-# Install dependencies
 bun install
-
-# Copy the env template and fill in admin credentials
-cp .env.example .env.local
-# Edit .env.local: set VITE_ADMIN_USERNAME / VITE_ADMIN_PASSWORD
-# To hook up the local WebSocket relay, also set VITE_WS_URL
-
-# Start the dev server (binds to all interfaces so your phone can reach it over LAN)
+cp .env.example .env.local   # VITE_WS_URL=/api, proxied by vite to localhost:9000
 bun run dev
 ```
 
 Defaults to `http://localhost:5173`. The terminal also prints a LAN URL (`http://192.168.x.x:5173`) you can open on your phone.
 
-If `VITE_WS_URL` is not set, the app falls back to `InMemorySyncService` (multi-tab in the same browser; great for solo iteration).
-
-### Backend (WebSocket relay)
-
-In a second terminal:
-
-```bash
-cd cloudbase/cloudfunctions/ws-relay
-npm install
-cp .env.example .env
-# Edit .env: ADMIN_USERNAME / ADMIN_PASSWORD must match the frontend
-npm run dev
-```
-
-Listens on `ws://localhost:9000`. Set `VITE_WS_URL=ws://localhost:9000` in the frontend's `.env.local` (the code auto-rewrites the hostname to whatever host the page was opened from, so phones on the LAN work with no extra config).
+> Without `LIVEKIT_*` configured, room voice shows as "unavailable" during local development; gameplay is unaffected. See the LiveKit section in [`deploy/README.md`](../deploy/README.md) to wire up voice locally.
 
 ### Multiplayer testing
 
-- **Same browser**: open several **private windows** — each has its own `playerId`
-- **Across devices**: put phone on the same Wi-Fi and open the LAN URL printed in the terminal
-- On macOS, the first run may prompt to allow Node/Bun to accept incoming connections — click "Allow"
+- Same browser: open multiple **incognito windows** against the dev server; each gets its own `playerId`
+- Across devices: open the printed `http://192.168.x.x:5173` on a phone on the same WiFi (note: voice requires a secure context, so it is unavailable over plain LAN IPs)
+- macOS firewall will prompt to allow Bun to accept inbound connections on first run — click "Allow"
 
 ## Project layout
 
 ```
-src/
-├── engine/              # Pure-function game engine (fully unit-tested)
-│   ├── dealRoles.ts     # Deal cards
-│   ├── nightOrder.ts    # Night wake-up order
-│   ├── nightActions.ts  # Per-role action handlers
-│   ├── voting.ts        # Vote tallying + elimination
-│   ├── winJudge.ts      # Win condition
-│   └── orchestrator.ts  # Start game / play again
-├── sync/                # Sync layer
-│   ├── GameSyncService.ts     # Abstract interface
-│   ├── InMemorySyncService.ts # Dev-time implementation
-│   ├── WebSocketSyncService.ts # Production implementation
-│   └── WebSocketConnection.ts  # Heartbeat + reconnect
-├── stores/              # Zustand stores
-├── hooks/               # Custom hooks
-├── services/            # TTS / Identicon / room ID
-├── routes/              # Pages
-│   ├── home/
-│   ├── lobby/
-│   └── game/
-│       └── components/  # Five-phase sub-screens
-├── components/
-│   ├── game/            # In-house game UI (Card, PlayerTable, CardSwap, …)
-│   ├── ui/              # shadcn/ui primitives
-│   └── icons/
+shared/                  # shared between client and server
+├── engine/              # pure-function game engine (deal/night/vote/win, unit-testable)
+├── protocol.ts          # WebSocket message protocol
 └── types/
 
-cloudbase/
-└── cloudfunctions/
-    └── ws-relay/        # WebSocket relay backend
+server/                  # server-authoritative game service (Bun)
+└── src/
+    ├── index.ts         # Bun.serve + message dispatch
+    ├── room.ts          # room storage and per-connection projection
+    ├── game.ts          # match flow driver
+    ├── auth.ts          # admin HMAC tokens + rate limiting
+    └── voice.ts         # LiveKit voice credential issuance
 
-public/
-├── manifest.webmanifest
-├── icon.svg
-├── icon-192.png
-└── icon-512.png
+src/                     # frontend
+├── scene/               # three.js 3D scene (table, cards, seat name tags)
+├── services/            # VoiceService (LiveKit) / NarrationService, etc.
+├── sync/                # WebSocket client (heartbeat + reconnect)
+├── stores/              # Zustand stores
+├── hooks/
+├── routes/              # home / lobby / game
+└── components/          # game components + shadcn/ui primitives
+
+deploy/                  # deployment sources (Caddyfile, docker-compose, LiveKit/coturn samples)
 ```
 
 ## Game flow
@@ -123,32 +100,33 @@ public/
 Waiting → Dealing → Night (n steps) → Day → Voting → Result → Waiting (play again)
 ```
 
-- **Night wake-up** is driven by *original* roles (`originalRoles`): every role that was added to the role pool gets its step called, even if it ended up in the center pile — this keeps the rhythm consistent so players can't infer who drew what from which calls happen or not.
-- **Result reveal** uses *final* roles (`allPlayerRoles` after every swap).
-- **Host disconnect**: the backend sets `isPaused=true` and all clients show the pause overlay; the host's reconnect automatically clears it.
-- **Host refresh**: on re-mount, the orchestrator inspects `phaseEndsAt` and restores the corresponding phase timer.
+- **Night wake-ups** follow initial roles (originalRoles); every role in the configured pool is called even if nobody drew it, keeping the pacing constant to prevent information leaks
+- **Result reveals** follow final roles (allPlayerRoles, after all night swaps)
+- **Voice phase rules**: everyone is force-muted and locked at nightfall; unlocked and auto-unmuted at dawn
+- **Host disconnect**: the server sets `isPaused=true`, all clients show a pause overlay; reconnect resumes automatically
 
-## Common scripts
+## Common commands
 
 ```bash
-bun run dev       # dev server
+bun run dev       # start the dev server
 bun run lint      # ESLint
 bun run test      # Vitest
-bun run build     # production build
-bun run preview   # preview the production build locally
+bun run build     # production build (tsc -b + vite build)
+bun run preview   # preview the production build
 ```
 
 ## Deployment
 
-- **Frontend**: `bun run build`, then upload `dist/` to CloudBase Static Hosting (or Vercel, Netlify, etc.)
-- **Backend**: see `cloudbase/cloudfunctions/ws-relay/README.md`. Deploy as a CloudBase HTTP Function with WS protocol, single-instance (MinNum = MaxNum = 1, because room state lives in-memory).
-- In production, configure `VITE_WS_URL=wss://...` on the build platform and set `ADMIN_USERNAME` / `ADMIN_PASSWORD` as environment variables on the relay function.
+Self-hosted on a single server: Caddy terminates TLS, `/` serves the frontend static assets, `/api` proxies to the game service (Docker), `/livekit` proxies the voice SFU signaling; pushing to main triggers a GitHub Actions build and rsync deploy. Full steps in [`deploy/README.md`](../deploy/README.md).
+
+**Constraint**: the game service must run as a single instance (room state lives in process memory); restarts interrupt games in progress.
 
 ## Docs
 
-- [`docs/PRD.md`](PRD.md) — product spec, game rules, network protocol
-- [`docs/plans/`](plans/) — implementation-phase notes
-- [`cloudbase/cloudfunctions/ws-relay/README.md`](../cloudbase/cloudfunctions/ws-relay/README.md) — backend protocol and deployment
+- [`docs/PRD.md`](PRD.md) — product requirements / game rules / network protocol
+- [`docs/plans/`](plans/) — implementation notes by phase
+- [`server/README.md`](../server/README.md) — server architecture, visibility model, and protocol
+- [`deploy/README.md`](../deploy/README.md) — server deployment (Caddy / Docker / LiveKit / coturn / CI)
 
 ## License
 

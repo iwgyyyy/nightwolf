@@ -51,6 +51,7 @@ Bun 原生执行 TypeScript，没有构建步骤。游戏引擎从 `../shared/en
 | `leave_room` | `{ roomId }` | |
 | `player_action` | `{ roomId, action }` | 确认身份 / 夜晚操作 / 投票 / 改名 |
 | `host_command` | `{ roomId, command }` | 开始游戏 / 改设置 / 结束讨论 / 再来一局 / 解散 |
+| `voice_token` | `{ roomId }` | 请求房间语音（LiveKit）接入凭证 |
 | `ping` | `{}` | |
 
 ### Server → Client
@@ -63,6 +64,7 @@ Bun 原生执行 TypeScript，没有构建步骤。游戏引擎从 `../shared/en
 | `private_state` | `{ state }` — 只含收件人自己那份 |
 | `room_deleted` | `{ roomId }` |
 | `error` | `{ code, message, requestId? }` |
+| `voice_token` | `{ url, token }` — LiveKit 信令地址与 24h JWT |
 | `pong` | `{}` |
 
 错误码：`INVALID_ARGUMENT` `UNAUTHORIZED` `RATE_LIMITED` `ROOM_NOT_FOUND` `GAME_IN_PROGRESS` `ROOM_FULL`
@@ -74,6 +76,12 @@ Bun 原生执行 TypeScript，没有构建步骤。游戏引擎从 `../shared/en
 token 是**无状态签名**而非服务端存储的随机串，因为存内存的话每次部署重启就全失效了，30 天有效期名存实亡。代价是无法撤销单个 token —— 要全部失效就改 `TOKEN_SECRET` 或改密码。
 
 连续 5 次失败会按来源 IP 锁定 1 分钟。
+
+## 房间语音
+
+语音走自建 LiveKit SFU，本服务只负责签发接入凭证：收到 `voice_token` 后按**连接身份**（`ws.data.playerId`，不信客户端自报）签一个绑定房间的 24h JWT，客户端拿去直连 LiveKit。签发是离线 JWT 签名，本服务与 LiveKit 之间无需网络互通。
+
+未配置 `LIVEKIT_URL / LIVEKIT_API_KEY / LIVEKIT_API_SECRET` 时对请求静默不回，客户端重试耗尽后自行降级为"语音不可用"。
 
 ## 语音播报
 
