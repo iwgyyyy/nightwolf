@@ -72,6 +72,13 @@ export class VoiceService {
 
     void this.acquireMic()
 
+    // 自动播放被拦的 audio（如刷新页面直接回房，全程无手势）不会自己恢复，
+    // 必须在用户手势里补 play()
+    document.addEventListener("pointerdown", this.resumeAudios, true)
+    this.unsubs.push(() =>
+      document.removeEventListener("pointerdown", this.resumeAudios, true),
+    )
+
     const sync = getSyncService()
     this.unsubs.push(
       sync.onVoiceSignal((fromId, signal) => {
@@ -129,6 +136,12 @@ export class VoiceService {
     if (!this.stream) return false
     if (!useVoiceUiStore.getState().locked) this.setMic(true)
     return true
+  }
+
+  private resumeAudios = (): void => {
+    for (const peer of this.peers.values()) {
+      if (peer.audio.paused) void peer.audio.play().catch(() => {})
+    }
   }
 
   private setMic(on: boolean): void {
