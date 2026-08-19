@@ -18,11 +18,17 @@ export function MicButton() {
   if (status === "idle") return null
   const denied = status === "denied"
   const unsupported = status === "unsupported"
+  const unavailable = status === "unavailable"
   const off = !micOn
 
   const handleClick = () => {
     if (unsupported) {
       toast.error("语音需要 HTTPS（或 localhost）访问才可用")
+      return
+    }
+    if (unavailable) {
+      getVoiceService().retryConnect()
+      toast.info("语音服务连接失败，正在重试…")
       return
     }
     if (locked) {
@@ -54,7 +60,7 @@ export function MicButton() {
         className={cn(
           "h-12 w-12 rounded-full shadow-lg",
           micOn && "candle-glow",
-          (denied || unsupported || locked) && "opacity-60",
+          (denied || unsupported || unavailable || locked) && "opacity-60",
         )}
       >
         {micOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}

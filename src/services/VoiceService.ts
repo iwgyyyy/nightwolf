@@ -28,8 +28,12 @@ import type { GamePhase } from "@/types"
 
 type Unsubscribe = () => void
 
-/** 超过该时长未收到 voice_token 视为服务端未启用语音 */
-const TOKEN_WAIT_MS = 10_000
+/**
+ * voice_token 请求的重试节奏。单发不可靠：WS 未连上时 send 直接丢弃；
+ * 服务端在 join_room 写入连接身份**之前**收到请求也会静默丢弃。
+ */
+const TOKEN_RETRY_MS = 2_000
+const TOKEN_MAX_TRIES = 8
 
 const MIC_CONSTRAINTS = {
   echoCancellation: true,
@@ -57,7 +61,8 @@ export class VoiceService {
   private micTrack: LocalAudioTrack | null = null
   private unsubs: Unsubscribe[] = []
   private lastPhase: GamePhase | null = null
-  private tokenTimer: ReturnType<typeof setTimeout> | null = null
+  private tokenTimer: ReturnType<typeof setInterval> | null = null
+  private tokenTries = 0
 
   /** 进入房间时调用；同房间重复调用是 no-op */
   join(roomId: string, selfId: string): void {
@@ -75,14 +80,10 @@ export class VoiceService {
       document.removeEventListener("pointerdown", this.resumeAudio, true),
     )
 
-    const sync = getSyncService()
     this.unsubs.push(
-      sync.onVoiceToken((url, token) => void this.connect(url, token)),
+      getSyncService().onVoiceToken((url, token) => void this.connect(url, token)),
     )
-    sync.requestVoiceToken(roomId)
-    this.tokenTimer = setTimeout(() => {
-      if (!this.room) useVoiceUiStore.getState().set({ status: "unsupported" })
-    }, TOKEN_WAIT_MS)
+    this.startTokenRequests()
 
     // 跟随 publicState 的阶段静音规则
     this.unsubs.push(
@@ -99,10 +100,7 @@ export class VoiceService {
   leave(): void {
     for (const unsub of this.unsubs) unsub()
     this.unsubs = []
-    if (this.tokenTimer) {
-      clearTimeout(this.tokenTimer)
-      this.tokenTimer = null
-    }
+    this.stopTokenRequests()
     const ui = useVoiceUiStore.getState()
     for (const id of Object.keys(ui.peers)) ui.clearPeerVoice(id)
     this.micTrack?.stop()
@@ -140,6 +138,41 @@ export class VoiceService {
     return true
   }
 
+  /** 语音服务连不上（unavailable）后手动重试，MicButton 点击时调用 */
+  retryConnect(): void {
+    if (!this.roomId || this.room) return
+    this.startTokenRequests()
+  }
+
+  private startTokenRequests(): void {
+    this.stopTokenRequests()
+    useVoiceUiStore.getState().set({ status: "connecting" })
+    this.tokenTries = 0
+    const tick = () => {
+      if (!this.roomId || this.room) return this.stopTokenRequests()
+      if (this.tokenTries >= TOKEN_MAX_TRIES) {
+        this.stopTokenRequests()
+        useVoiceUiStore.getState().set({ status: "unavailable" })
+        return
+      }
+      this.tokenTries++
+      try {
+        getSyncService().requestVoiceToken(this.roomId)
+      } catch {
+        // 断线期间丢请求没关系，下个 tick 重发
+      }
+    }
+    tick()
+    this.tokenTimer = setInterval(tick, TOKEN_RETRY_MS)
+  }
+
+  private stopTokenRequests(): void {
+    if (this.tokenTimer) {
+      clearInterval(this.tokenTimer)
+      this.tokenTimer = null
+    }
+  }
+
   private setMic(on: boolean): void {
     const track = this.micTrack
     if (!track) return
@@ -154,10 +187,7 @@ export class VoiceService {
   private async connect(url: string, token: string): Promise<void> {
     // 已连接（重复响应）或已离开
     if (this.room || !this.roomId) return
-    if (this.tokenTimer) {
-      clearTimeout(this.tokenTimer)
-      this.tokenTimer = null
-    }
+    this.stopTokenRequests()
 
     const room = new Room()
     this.room = room
@@ -192,7 +222,7 @@ export class VoiceService {
         // 仍在游戏房间就重新要 token 建连
         if (this.room !== room) return
         this.room = null
-        if (this.roomId) getSyncService().requestVoiceToken(this.roomId)
+        if (this.roomId) this.startTokenRequests()
       })
 
     try {
@@ -200,9 +230,12 @@ export class VoiceService {
         rtcConfig: ICE_SERVERS.length ? { iceServers: ICE_SERVERS } : undefined,
       })
     } catch {
-      // 建连失败：交给 Disconnected 逻辑重试没有意义（没连上不触发），
-      // 保持 connecting 状态等下一次 join/token
-      if (this.room === room) this.room = null
+      // 建连失败（LiveKit 不可达 / token 失效）：置 unavailable，
+      // 由用户点麦克风按钮 retryConnect，避免自动无限重连
+      if (this.room === room) {
+        this.room = null
+        useVoiceUiStore.getState().set({ status: "unavailable" })
+      }
       return
     }
     // connect 期间被 leave 打断

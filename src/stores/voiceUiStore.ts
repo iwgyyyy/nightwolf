@@ -1,9 +1,10 @@
 import { create } from "zustand"
 
 /**
- * 语音可用性：idle=未进房，connecting=正在拿麦克风，ready=可用，
+ * 语音可用性：idle=未进房，connecting=正在连接语音服务/拿麦克风，ready=可用，
  * denied=权限被拒（可在用户手势里重试），
- * unsupported=环境不支持（非 HTTPS 访问时浏览器不提供 getUserMedia）
+ * unsupported=环境不支持（非 HTTPS 访问时浏览器不提供 getUserMedia），
+ * unavailable=语音服务连不上（token 请求多次无响应，可手动重试）
  */
 export type VoiceStatus =
   | "idle"
@@ -11,6 +12,7 @@ export type VoiceStatus =
   | "ready"
   | "denied"
   | "unsupported"
+  | "unavailable"
 
 /** 其他玩家的语音状态（micOn 来自对端广播，speaking 来自本地音量采样） */
 export interface PeerVoiceState {
