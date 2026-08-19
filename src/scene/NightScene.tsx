@@ -511,35 +511,44 @@ export function NightScene() {
         />
       ))}
 
-      {/* 狼人互认 / 爪牙看狼：同伴座位发光 + 狼徽 */}
+      {/* 狼人互认 / 爪牙看狼：同伴座位发光 + 牌上方醒目标签 */}
       {glowIds.map((id) => {
         const p = placements.find((pl) => pl.player.playerId === id)
         if (!p) return null
         return (
-          <group key={id} position={p.position}>
-            <pointLight
-              position={[0, 1.4, 0.35]}
-              color={PALETTE.blood500}
-              intensity={2.5}
-              distance={2.5}
-            />
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-              <ringGeometry args={[0.42, 0.5, 32]} />
-              <meshBasicMaterial
+          <group key={id}>
+            <group position={p.position}>
+              <pointLight
+                position={[0, 1.4, 0.35]}
                 color={PALETTE.blood500}
-                transparent
-                opacity={0.55}
+                intensity={2.5}
+                distance={2.5}
               />
-            </mesh>
+              <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+                <ringGeometry args={[0.42, 0.5, 32]} />
+                <meshBasicMaterial
+                  color={PALETTE.blood500}
+                  transparent
+                  opacity={0.55}
+                />
+              </mesh>
+            </group>
             <Html
-              position={[0, 1.95, 0]}
+              position={[
+                p.cardPosition[0],
+                p.cardPosition[1] + 0.55,
+                p.cardPosition[2],
+              ]}
               center
               zIndexRange={[35, 0]}
               style={{ pointerEvents: "none" }}
             >
-              <span className="flex h-7 w-7 items-center justify-center rounded-full border border-blood-500/60 bg-blood-500/25 font-display text-sm text-blood-500">
-                狼
-              </span>
+              <div className="flex animate-bounce flex-col items-center">
+                <span className="rounded-full border border-blood-500/70 bg-night-900/90 px-3 py-1 font-display text-sm whitespace-nowrap text-blood-500 shadow-lg backdrop-blur-sm">
+                  狼队友
+                </span>
+                <span className="text-xs text-blood-500">▼</span>
+              </div>
             </Html>
           </group>
         )
