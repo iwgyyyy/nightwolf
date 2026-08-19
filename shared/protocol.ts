@@ -71,11 +71,8 @@ export type ClientMessage =
   /** 玩家意图：确认身份 / 夜晚操作 / 投票 / 改名 */
   | { type: "player_action"; data: { roomId: string; action: PlayerAction } }
   | { type: "host_command"; data: { roomId: string; command: HostCommand } }
-  /** WebRTC 语音信令：中继给同房间的 targetId（服务端不解析 signal 内容） */
-  | {
-      type: "voice_signal";
-      data: { roomId: string; targetId: string; signal: unknown };
-    }
+  /** 请求本房间的 LiveKit 语音接入凭证（身份由连接确定） */
+  | { type: "voice_token"; data: { roomId: string } }
   | { type: "ping"; data: Record<string, never> };
 
 // ============================================================
@@ -94,8 +91,8 @@ export type ServerMessage =
       type: "error";
       data: { code: SyncErrorCode; message: string; requestId?: string };
     }
-  /** 语音信令：来自同房间 fromId 的 offer/answer/ICE */
-  | { type: "voice_signal"; data: { fromId: string; signal: unknown } }
+  /** LiveKit 语音接入凭证（url 为信令地址，token 绑定房间与本人身份） */
+  | { type: "voice_token"; data: { url: string; token: string } }
   | { type: "pong"; data: Record<string, never> };
 
 // ============================================================
@@ -117,7 +114,7 @@ const CLIENT_TYPES = new Set<string>([
   "leave_room",
   "player_action",
   "host_command",
-  "voice_signal",
+  "voice_token",
   "ping",
 ]);
 
@@ -128,7 +125,7 @@ const SERVER_TYPES = new Set<string>([
   "private_state",
   "room_deleted",
   "error",
-  "voice_signal",
+  "voice_token",
   "pong",
 ]);
 

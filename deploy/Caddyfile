@@ -20,6 +20,17 @@ jc.infist.cn {
 		}
 	}
 
+	# LiveKit 信令（房间语音 SFU）。剥掉 /livekit 前缀后
+	# 客户端 SDK 的 wss://…/livekit/rtc 正好落到 LiveKit 的 /rtc。
+	handle_path /livekit* {
+		reverse_proxy 127.0.0.1:7880 {
+			transport http {
+				read_timeout 1h
+				write_timeout 1h
+			}
+		}
+	}
+
 	# 前端静态资源。React Router 需要 SPA fallback。
 	handle {
 		root * /srv/nightwolf/dist

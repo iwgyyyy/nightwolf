@@ -1,0 +1,20 @@
+# LiveKit SFU 配置样例。复制为 /srv/nightwolf/livekit.yaml（不进仓库）。
+#
+# key/secret 与游戏服务端 .env 的 LIVEKIT_API_KEY/SECRET 必须一致：
+#   key:    openssl rand -hex 8
+#   secret: openssl rand -hex 32
+
+# 信令（WebSocket）。只绑回环没有意义（host 网络下 Caddy 同机反代即可），
+# 公网 7880 由安全组挡住，无需暴露。
+port: 7880
+
+rtc:
+  # 单端口 UDP mux：所有媒体走这一个端口，须在安全组放行区间内
+  # （49152-65535 已为 coturn 放行；coturn 的 min-port 已让位到 50001）
+  udp_port: 50000
+  # 云机公网 IP 是 NAT 映射的，靠 STUN 自发现对外地址
+  use_external_ip: true
+
+keys:
+  # 换成真实生成的值
+  <api-key>: <api-secret>

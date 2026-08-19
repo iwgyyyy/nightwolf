@@ -25,3 +25,21 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  # 房间语音 SFU。信令 7880 只走 Caddy 的 /livekit 反代，
+  # 媒体走单端口 UDP mux 50000（安全组已放行的区间内）。
+  # host 网络：use_external_ip 的 STUN 自发现和 UDP mux 都需要
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: nightwolf-livekit
+    restart: unless-stopped
+    network_mode: host
+    command: --config /etc/livekit.yaml
+    volumes:
+      # 真实配置不进仓库（含 API secret），同 .env 待遇；样例见 livekit.yaml.example
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

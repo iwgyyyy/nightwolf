@@ -50,7 +50,7 @@ export class NightwolfClient {
   private privateCallbacks = new Set<(s: PrivatePlayerState) => void>()
   private roomDeletedCallbacks = new Map<string, Set<() => void>>()
   private connectionCallbacks = new Set<(status: ConnectionStatus) => void>()
-  private voiceCallbacks = new Set<(fromId: string, signal: unknown) => void>()
+  private voiceCallbacks = new Set<(url: string, token: string) => void>()
 
   private cachedPublic = new Map<string, PublicRoomState>()
   private cachedPrivate: PrivatePlayerState | null = null
@@ -171,9 +171,8 @@ export class NightwolfClient {
         }
         return
       }
-      case "voice_signal": {
-        for (const cb of this.voiceCallbacks)
-          cb(msg.data.fromId, msg.data.signal)
+      case "voice_token": {
+        for (const cb of this.voiceCallbacks) cb(msg.data.url, msg.data.token)
         return
       }
       case "pong":
@@ -294,15 +293,12 @@ export class NightwolfClient {
     this.connection.send({ type: "host_command", data: { roomId, command } })
   }
 
-  /** WebRTC 语音信令：经服务端中继给同房间的目标玩家 */
-  sendVoiceSignal(roomId: string, targetId: string, signal: unknown): void {
-    this.connection.send({
-      type: "voice_signal",
-      data: { roomId, targetId, signal },
-    })
+  /** 请求本房间的 LiveKit 语音接入凭证，结果经 onVoiceToken 回调 */
+  requestVoiceToken(roomId: string): void {
+    this.connection.send({ type: "voice_token", data: { roomId } })
   }
 
-  onVoiceSignal(cb: (fromId: string, signal: unknown) => void): Unsubscribe {
+  onVoiceToken(cb: (url: string, token: string) => void): Unsubscribe {
     this.voiceCallbacks.add(cb)
     return () => this.voiceCallbacks.delete(cb)
   }

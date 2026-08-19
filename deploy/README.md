@@ -3,8 +3,10 @@
 前后端同域跑在一台服务器上：Caddy 终止 TLS，`/` 出前端静态资源，`/api` 反代到容器里的 WebSocket 服务。
 
 ```
-浏览器 ──443──> Caddy ──┬── /      → /srv/nightwolf/dist
-                        └── /api   → 127.0.0.1:9000 (docker)
+浏览器 ──443──> Caddy ──┬── /        → /srv/nightwolf/dist
+                        ├── /api     → 127.0.0.1:9000 (docker, 游戏服务)
+                        └── /livekit → 127.0.0.1:7880 (docker, 语音 SFU 信令)
+浏览器 ──UDP 50000──> LiveKit 媒体（单端口 mux，host 网络）
 ```
 
 ## 一次性初始化
@@ -47,6 +49,11 @@ ADMIN_PASSWORD=一个足够强的密码
 
 # 可选：让 token 独立于密码轮换
 # TOKEN_SECRET=$(openssl rand -base64 32)
+
+# 房间语音（LiveKit）。与 /srv/nightwolf/livekit.yaml 的 keys 一致
+LIVEKIT_URL=wss://jc.infist.cn/livekit
+LIVEKIT_API_KEY=$(openssl rand -hex 8)
+LIVEKIT_API_SECRET=$(openssl rand -hex 32)
 ```
 
 ```bash
@@ -77,14 +84,29 @@ command="/srv/nightwolf/ssh-gate.sh",no-pty,no-agent-forwarding,no-port-forwardi
 | `VITE_WS_URL` | `wss://你的域名/api` |
 | `VITE_ICE_SERVERS` | 房间语音的 STUN/TURN 配置，JSON 数组，见下文 coturn |
 
-## coturn（房间语音的 TURN 中继）
+## LiveKit（房间语音 SFU）
 
-房间语音是 WebRTC P2P，直连打洞失败（国内对称 NAT 常见）时靠服务器上的
-coturn 中继兜底。配置在 `/etc/turnserver.conf`：公私网映射
-`external-ip=公网IP/私网IP`、账号 `user=nightwolf:<随机串>`、
-中继端口 49152-65535、denied-peer-ip 禁掉内网与云元数据段、限额防滥用。
+每人只上传 1 路音频到 SFU，由服务器分发（取代旧 WebRTC mesh）。
+玩家的接入 token 由游戏服务端签发（`voice_token` WS 消息），无需登录。
 
-- 安全组需放行 **UDP 3478** 与 **UDP 49152-65535**（入方向）
+- 配置：`livekit.yaml.example` 复制为 `/srv/nightwolf/livekit.yaml`，
+  生成 key/secret 并同步写进 `.env` 的 `LIVEKIT_API_KEY/SECRET`
+- 信令走 Caddy 的 `/livekit` 反代（443），媒体走 **UDP 50000** 单端口 mux
+  （在已放行的 49152-65535 区间内，安全组无需改动）
+- 排查：`docker compose logs -f livekit`，参会/发布轨道都有日志；
+  外网 `curl https://域名/livekit` 应返回 200 OK
+
+## coturn（TURN 中继，兜底）
+
+客户端 UDP 被墙（公司网络、部分代理）时，经 coturn 中继连到 SFU
+（`VITE_ICE_SERVERS` 注入前端，进 LiveKit 的 rtcConfig）。
+配置在 `/etc/turnserver.conf`：公私网映射 `external-ip=公网IP/私网IP`、
+账号 `user=nightwolf:<随机串>`、中继端口 **50001**-65535（50000 让给
+LiveKit 的 UDP mux）、denied-peer-ip 禁掉内网与云元数据段。
+`user-quota=0`（全站共享一个账号，按用户名限额没有意义）、
+`total-quota=300` 全局兜底。
+
+- 安全组需放行 **UDP/TCP 3478** 与 **UDP 49152-65535**（入方向）
 - 配置文件权限须为 `root:turnserver 640`——600 会让以 turnserver
   用户运行的进程读不到配置，静默回退默认配置（无账号、无 external-ip）
 - `VITE_ICE_SERVERS` 的值形如：
