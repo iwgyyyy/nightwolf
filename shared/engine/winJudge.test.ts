@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { judgeWin } from "./winJudge"
+import { isPlayerWinner, judgeWin } from "./winJudge"
 import type { Role } from "../types"
 
 describe("judgeWin", () => {
@@ -75,5 +75,55 @@ describe("judgeWin", () => {
       p3: "werewolf",
     }
     expect(judgeWin(["p1", "p2"], finalRoles)).toBe("tannerWin")
+  })
+})
+
+describe("isPlayerWinner", () => {
+  it("villagerWin：被投出的狼判负，好人阵营（含出局的猎人/村民）判胜", () => {
+    const finalRoles: Record<string, Role> = {
+      wolf: "werewolf",
+      hunter: "hunter",
+      villager: "villager",
+      minion: "minion",
+      tanner: "tanner",
+    }
+    const eliminated = ["wolf", "hunter", "villager"]
+    expect(isPlayerWinner("wolf", "villagerWin", finalRoles, eliminated)).toBe(false)
+    // 出局但阵营胜利 → 仍然获胜
+    expect(isPlayerWinner("hunter", "villagerWin", finalRoles, eliminated)).toBe(true)
+    expect(isPlayerWinner("villager", "villagerWin", finalRoles, eliminated)).toBe(true)
+    expect(isPlayerWinner("minion", "villagerWin", finalRoles, eliminated)).toBe(false)
+    // 皮匠在阵营胜利时判负
+    expect(isPlayerWinner("tanner", "villagerWin", finalRoles, eliminated)).toBe(false)
+  })
+
+  it("werewolfWin：狼与爪牙判胜（存活但阵营失败的好人判负）", () => {
+    const finalRoles: Record<string, Role> = {
+      wolf: "werewolf",
+      minion: "minion",
+      seer: "seer",
+      villager: "villager",
+    }
+    const eliminated = ["villager"]
+    expect(isPlayerWinner("wolf", "werewolfWin", finalRoles, eliminated)).toBe(true)
+    expect(isPlayerWinner("minion", "werewolfWin", finalRoles, eliminated)).toBe(true)
+    // 存活但失败
+    expect(isPlayerWinner("seer", "werewolfWin", finalRoles, eliminated)).toBe(false)
+  })
+
+  it("tannerWin：仅被投出的皮匠获胜，其余全败", () => {
+    const finalRoles: Record<string, Role> = {
+      tanner: "tanner",
+      wolf: "werewolf",
+      villager: "villager",
+    }
+    const eliminated = ["tanner"]
+    expect(isPlayerWinner("tanner", "tannerWin", finalRoles, eliminated)).toBe(true)
+    expect(isPlayerWinner("wolf", "tannerWin", finalRoles, eliminated)).toBe(false)
+    expect(isPlayerWinner("villager", "tannerWin", finalRoles, eliminated)).toBe(false)
+  })
+
+  it("未知 playerId 判负", () => {
+    expect(isPlayerWinner("ghost", "villagerWin", {}, [])).toBe(false)
   })
 })

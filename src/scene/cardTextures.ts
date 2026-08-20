@@ -91,7 +91,47 @@ function drawBack(ctx: CanvasRenderingContext2D) {
   ctx.restore()
 }
 
-function drawFront(ctx: CanvasRenderingContext2D, role: Role) {
+/** 结算牌面的个人结果角标（出局≠失败，两枚可共存） */
+export interface CardVerdict {
+  won: boolean
+  eliminated: boolean
+}
+
+function drawVerdictPills(ctx: CanvasRenderingContext2D, verdict: CardVerdict) {
+  const pills: { text: string; bg: string; fg: string }[] = [
+    verdict.won
+      ? { text: "获胜", bg: "#e9bd6a", fg: "#332e28" }
+      : { text: "失败", bg: "rgba(51,46,40,0.16)", fg: "rgba(51,46,40,0.72)" },
+  ]
+  if (verdict.eliminated) {
+    pills.push({ text: "出局", bg: "rgba(224,92,76,0.92)", fg: "#f7f3ea" })
+  }
+
+  const PILL_H = 34
+  const PAD_X = 14
+  const GAP = 10
+  const TOP = 32
+  ctx.font = `bold 22px ${FONT_STACK}`
+  ctx.textAlign = "center"
+  ctx.textBaseline = "middle"
+  const widths = pills.map((p) => ctx.measureText(p.text).width + PAD_X * 2)
+  let x = (W - (widths.reduce((a, b) => a + b, 0) + GAP * (pills.length - 1))) / 2
+  pills.forEach((p, i) => {
+    ctx.beginPath()
+    ctx.roundRect(x, TOP, widths[i], PILL_H, PILL_H / 2)
+    ctx.fillStyle = p.bg
+    ctx.fill()
+    ctx.fillStyle = p.fg
+    ctx.fillText(p.text, x + widths[i] / 2, TOP + PILL_H / 2 + 1)
+    x += widths[i] + GAP
+  })
+}
+
+function drawFront(
+  ctx: CanvasRenderingContext2D,
+  role: Role,
+  verdict?: CardVerdict,
+) {
   const meta = ROLE_META[role]
   const accent = TEAM_COLOR[meta.team]
 
@@ -133,6 +173,8 @@ function drawFront(ctx: CanvasRenderingContext2D, role: Role) {
   const teamLabel =
     meta.team === "werewolf" ? "狼人阵营" : meta.team === "villager" ? "村民阵营" : "独立阵营"
   ctx.fillText(teamLabel, W / 2, H - 34)
+
+  if (verdict) drawVerdictPills(ctx, verdict)
   ctx.restore()
 }
 
@@ -189,8 +231,17 @@ export function cardBackTexture(): CanvasTexture {
   return getOrCreate("back", drawBack)
 }
 
-export function cardFrontTexture(role: Role): CanvasTexture {
-  return getOrCreate(`front:${role}`, (ctx) => drawFront(ctx, role))
+export function cardFrontTexture(
+  role: Role,
+  verdict?: CardVerdict,
+): CanvasTexture {
+  // verdict 必须进 key：底牌与玩家牌共享同一 role 时角标不能串
+  const suffix = verdict
+    ? `:${verdict.won ? "w" : "l"}${verdict.eliminated ? "e" : ""}`
+    : ""
+  return getOrCreate(`front:${role}${suffix}`, (ctx) =>
+    drawFront(ctx, role, verdict),
+  )
 }
 
 // ============================================================
@@ -309,24 +360,45 @@ export function nameTexture(
   )
 }
 
-/** 结算：自己出局时放在自己牌下方的提示（整句红字） */
-export function selfEliminatedTexture(): CanvasTexture {
+/** 结算：放在自己牌下方桌沿的个人结果（胜负优先，出局作后缀） */
+export function selfVerdictTexture(
+  won: boolean,
+  eliminated: boolean,
+): CanvasTexture {
   return getOrCreate(
-    "self-eliminated",
+    `self-verdict:${won ? "w" : "l"}${eliminated ? "e" : ""}`,
     (ctx) => {
       ctx.clearRect(0, 0, NAME_W, NAME_H)
+      const main = won ? "你获胜了" : "你失败了"
+      const suffix = eliminated ? " · 出局" : ""
+      ctx.font = `bold 56px ${FONT_STACK}`
+      const mainW = ctx.measureText(main).width
+      const suffixW = suffix ? ctx.measureText(suffix).width : 0
+      const total = mainW + suffixW
+
       ctx.beginPath()
-      ctx.roundRect(72, 18, NAME_W - 144, NAME_H - 36, 46)
+      ctx.roundRect(
+        (NAME_W - total) / 2 - 36,
+        18,
+        total + 72,
+        NAME_H - 36,
+        46,
+      )
       ctx.fillStyle = "rgba(8,10,22,0.22)"
       ctx.fill()
       ctx.shadowColor = "rgba(6,8,18,0.9)"
       ctx.shadowBlur = 12
       ctx.shadowOffsetY = 2
-      ctx.font = `bold 64px ${FONT_STACK}`
-      ctx.textAlign = "center"
+      ctx.textAlign = "left"
       ctx.textBaseline = "middle"
-      ctx.fillStyle = "rgba(224,92,76,0.95)"
-      ctx.fillText("你出局了", NAME_W / 2, NAME_H / 2 + 2)
+      let x = (NAME_W - total) / 2
+      ctx.fillStyle = won ? "#e9bd6a" : "rgba(243,244,250,0.66)"
+      ctx.fillText(main, x, NAME_H / 2 + 2)
+      if (suffix) {
+        x += mainW
+        ctx.fillStyle = "rgba(224,92,76,0.95)"
+        ctx.fillText(suffix, x, NAME_H / 2 + 2)
+      }
     },
     NAME_W,
     NAME_H,

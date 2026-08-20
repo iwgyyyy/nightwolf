@@ -8,7 +8,11 @@ import {
   type MeshStandardMaterial,
 } from "three"
 import type { Role } from "@/types"
-import { cardBackTexture, cardFrontTexture } from "./cardTextures"
+import {
+  cardBackTexture,
+  cardFrontTexture,
+  type CardVerdict,
+} from "./cardTextures"
 import { bezier2, clamp01, easeOutCubic } from "./animation"
 import { PALETTE } from "./palette"
 
@@ -39,6 +43,8 @@ interface Card3DProps {
   highlighted?: boolean
   /** 已选中：牌本体抬起、微放大、牌背亮起呼吸暖光（盖过 highlighted） */
   selected?: boolean
+  /** 结算牌面的个人结果角标（胜负 + 出局） */
+  verdict?: CardVerdict
 }
 
 /**
@@ -55,6 +61,7 @@ export function Card3D({
   onClick,
   highlighted,
   selected,
+  verdict,
 }: Card3DProps) {
   const group = useRef<Group>(null)
   const anim = useRef({ dealStart: null as number | null, dealt: !dealFrom })
@@ -62,7 +69,7 @@ export function Card3D({
   const liftTarget = useRef(new Vector3())
 
   const backTex = cardBackTexture()
-  const frontTex = role ? cardFrontTexture(role) : cardBackTexture()
+  const frontTex = role ? cardFrontTexture(role, verdict) : cardBackTexture()
 
   const resting = useMemo(
     () => ({

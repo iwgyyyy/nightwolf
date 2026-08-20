@@ -17,6 +17,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { RoleBadge } from "@/components/game/RoleBadge"
+import { isPlayerWinner } from "@/engine/winJudge"
 import { ROLE_META } from "@/types"
 import type { NightAction, Vote, WinResult } from "@/types"
 import { useGameStore, selectPlayers, selectHostId } from "@/stores/gameStore"
@@ -71,6 +72,21 @@ export function ResultHud() {
 
   const isHost = hostId === playerId
   const meta = WIN_META[result.winner]
+  // villagerWin 有一条"无人出局且场上无狼"的胜利路径，默认副标题不适用
+  const subtitle =
+    result.winner === "villagerWin" && result.eliminatedPlayerIds.length === 0
+      ? "场上没有狼人，全员平安"
+      : meta.subtitle
+  const won = playerId
+    ? isPlayerWinner(
+        playerId,
+        result.winner,
+        result.finalRoles,
+        result.eliminatedPlayerIds,
+      )
+    : false
+  const selfEliminated =
+    playerId != null && result.eliminatedPlayerIds.includes(playerId)
 
   const handlePlayAgain = () => {
     if (resetting) return
@@ -117,9 +133,31 @@ export function ResultHud() {
               <h1 className="font-display text-lg leading-tight text-moon-100">
                 {meta.title}
               </h1>
-              <p className="text-[0.7rem] text-moon-100/60">{meta.subtitle}</p>
+              <p className="text-[0.7rem] text-moon-100/60">{subtitle}</p>
             </div>
           </div>
+          {/* 个人判定：胜负优先，出局只是后缀（出局≠失败，皮匠恰恰相反） */}
+          {playerId && (
+            <motion.p
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.6 }}
+              className="relative mt-2 font-display text-2xl leading-tight"
+            >
+              <span
+                className={
+                  won
+                    ? "candle-text-glow text-candle-500"
+                    : "text-moon-100/60"
+                }
+              >
+                {won ? "您获胜了" : "您失败了"}
+              </span>
+              {selfEliminated && (
+                <span className="text-blood-500"> · 出局</span>
+              )}
+            </motion.p>
+          )}
         </motion.div>
       </header>
 

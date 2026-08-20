@@ -1,3 +1,4 @@
+import { ROLE_META } from "../types"
 import type { Role, WinResult } from "../types"
 
 /**
@@ -30,4 +31,27 @@ export function judgeWin(
   // 无人被投出
   const anyWerewolfOnTable = Object.values(finalRoles).includes("werewolf")
   return anyWerewolfOnTable ? "werewolfWin" : "villagerWin"
+}
+
+/**
+ * 单个玩家是否获胜。出局≠失败：狼被投出时好人阵营的死者同样获胜，
+ * 皮匠更是只有被投出才获胜。
+ *
+ * - tannerWin：仅「最终身份是皮匠且自己出局」者胜，其余全败
+ * - werewolfWin / villagerWin：按最终身份的阵营判定（爪牙属狼阵营；
+ *   independent 即皮匠在阵营胜利时一律判负）
+ */
+export function isPlayerWinner(
+  playerId: string,
+  winner: WinResult,
+  finalRoles: Record<string, Role>,
+  eliminatedPlayerIds: string[],
+): boolean {
+  const role = finalRoles[playerId]
+  if (!role) return false
+  if (winner === "tannerWin") {
+    return role === "tanner" && eliminatedPlayerIds.includes(playerId)
+  }
+  const team = ROLE_META[role].team
+  return winner === "werewolfWin" ? team === "werewolf" : team === "villager"
 }

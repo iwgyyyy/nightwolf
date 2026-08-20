@@ -10,7 +10,8 @@ import {
   TABLE_TOP_Y,
 } from "./seat-layout"
 import { Card3D, type CardPoseTarget } from "./Card3D"
-import { selfEliminatedTexture } from "./cardTextures"
+import { selfVerdictTexture, type CardVerdict } from "./cardTextures"
+import { isPlayerWinner } from "@/engine/winJudge"
 
 /** 翻开后正面朝上；所有牌统一文字朝向本地玩家，可读性优先于物理拟真 */
 const FLIP_Q = new Quaternion().setFromEuler(new Euler(Math.PI, 0, 0))
@@ -32,11 +33,13 @@ interface RevealCard {
   rotationY: number
   role: import("@/types").Role | null
   baseQuat: Quaternion
+  /** 玩家牌才有；底牌无 */
+  verdict?: CardVerdict
 }
 
 /**
  * 结算场景：全桌身份牌逐张翻开（抬起 → 翻面 → 落回），
- * 出局玩家的牌位上方挂红色标记。数据全部来自公开的 resultData。
+ * 每张玩家牌带个人结果角标（胜负 + 出局）。数据全部来自公开的 resultData。
  */
 export function ResultScene() {
   const publicState = useGameStore((s) => s.publicState)
@@ -52,13 +55,25 @@ export function ResultScene() {
 
   const cards = useMemo<RevealCard[]>(() => {
     if (!result) return []
-    const list: RevealCard[] = placements.map((p) => ({
-      id: p.player.playerId,
-      position: p.cardPosition,
-      rotationY: p.rotationY,
-      role: result.finalRoles[p.player.playerId] ?? null,
-      baseQuat: new Quaternion().setFromEuler(new Euler(0, p.rotationY, 0)),
-    }))
+    const list: RevealCard[] = placements.map((p) => {
+      const pid = p.player.playerId
+      return {
+        id: pid,
+        position: p.cardPosition,
+        rotationY: p.rotationY,
+        role: result.finalRoles[pid] ?? null,
+        baseQuat: new Quaternion().setFromEuler(new Euler(0, p.rotationY, 0)),
+        verdict: {
+          won: isPlayerWinner(
+            pid,
+            result.winner,
+            result.finalRoles,
+            result.eliminatedPlayerIds,
+          ),
+          eliminated: result.eliminatedPlayerIds.includes(pid),
+        },
+      }
+    })
     centerCardPositions().forEach((pos, i) => {
       list.push({
         id: `center_${i}`,
@@ -106,27 +121,40 @@ export function ResultScene() {
           rotationY={c.rotationY}
           role={c.role}
           poseRef={getPose(c.id)}
+          verdict={c.verdict}
         />
       ))}
 
-      {/* 其他人的出局标记走 SeatFigure 桌面名签；自己出局时
-          在自己牌下方的桌沿（与其他名签同半径）显示"你出局了" */}
-      {playerId && result.eliminatedPlayerIds.includes(playerId) && (
-        <Billboard position={[0, TABLE_TOP_Y + 0.08, 1.31]}>
-          <mesh renderOrder={10}>
-            <planeGeometry args={[0.8, 0.2]} />
-            <meshStandardMaterial
-              map={selfEliminatedTexture()}
-              depthTest={false}
-              emissive="#ffffff"
-              emissiveMap={selfEliminatedTexture()}
-              emissiveIntensity={0.75}
-              transparent
-              roughness={1}
-            />
-          </mesh>
-        </Billboard>
-      )}
+      {/* 其他人的结果看牌面角标与名签；自己的胜负（出局作后缀）
+          在自己牌下方的桌沿（与其他名签同半径）常显 */}
+      {playerId && (() => {
+        const won = isPlayerWinner(
+          playerId,
+          result.winner,
+          result.finalRoles,
+          result.eliminatedPlayerIds,
+        )
+        const tex = selfVerdictTexture(
+          won,
+          result.eliminatedPlayerIds.includes(playerId),
+        )
+        return (
+          <Billboard position={[0, TABLE_TOP_Y + 0.08, 1.31]}>
+            <mesh renderOrder={10}>
+              <planeGeometry args={[0.8, 0.2]} />
+              <meshStandardMaterial
+                map={tex}
+                depthTest={false}
+                emissive="#ffffff"
+                emissiveMap={tex}
+                emissiveIntensity={0.75}
+                transparent
+                roughness={1}
+              />
+            </mesh>
+          </Billboard>
+        )
+      })()}
     </>
   )
 }
